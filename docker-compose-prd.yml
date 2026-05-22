@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: ecommerce-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce}
+      POSTGRES_USER: ${POSTGRES_USER:-ecommerce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ecommerce_pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecommerce} -d ${POSTGRES_DB:-ecommerce}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-net
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: ecommerce-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ecommerce_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-net
+
+  user-api:
+    build:
+      context: ./user-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-user-api
+    environment:
+      PORT: ${USER_API_PORT:-8094}
+      DB_URL: ${USER_API_DB_URL:-jdbc:postgresql://postgres:5432/ecommerce}
+      DB_USERNAME: ${USER_API_DB_USERNAME:-ecommerce}
+      DB_PASSWORD: ${USER_API_DB_PASSWORD:-ecommerce}
+      JWT_ISSUER: ${USER_API_JWT_ISSUER:-user-api}
+      JWT_ACCESS_TOKEN_MINUTES: ${USER_API_ACCESS_TOKEN_MINUTES:-30}
+      JWT_REFRESH_TOKEN_MINUTES: ${USER_API_REFRESH_TOKEN_MINUTES:-10080}
+      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
+      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+    ports:
+      - "${USER_API_PORT:-8094}:${USER_API_PORT:-8094}"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+volumes:
+  ecommerce_pgdata:
+  ecommerce_rabbitmq_data:
+
+networks:
+  ecommerce-net:
+    driver: bridge

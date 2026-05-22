@@ -2,26 +2,42 @@
 target/
 *.class
 
-# IDE
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
 .idea/
 .vscode/
+*.iml
 
 # Env / secrets
 .env
+.env.*
+!.env.example
 *.pem
 *.key
+*.p12
+*.jks
 
 # Python
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
-# Datasets / modelos
+# Datasets / modelos ML
 data/
 datasets/
 models/
 *.pkl
 *.joblib
+*.parquet
+*.csv
+
+# Logs
+logs/
+*.log
 
 # OS
 .DS_Store
+Thumbs.db
