@@ -1,0 +1,27 @@
+# Java / Quarkus
+target/
+*.class
+
+# IDE
+.idea/
+.vscode/
+
+# Env / secrets
+.env
+*.pem
+*.key
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Datasets / modelos
+data/
+datasets/
+models/
+*.pkl
+*.joblib
+
+# OS
+.DS_Store
