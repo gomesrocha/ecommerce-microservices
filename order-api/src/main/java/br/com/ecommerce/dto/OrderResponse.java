@@ -13,6 +13,11 @@ public record OrderResponse(
         String customerState,
         OrderStatus status,
         BigDecimal totalAmount,
+        Integer minDeliveryDays,
+        Integer estimatedDeliveryDays,
+        Integer maxDeliveryDays,
+        String deliverySource,
+        String deliveryModelVersion,
         List<OrderItemResponse> items,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -25,6 +30,11 @@ public record OrderResponse(
                 order.customerState,
                 order.status,
                 order.totalAmount,
+                order.minDeliveryDays,
+                order.estimatedDeliveryDays,
+                order.maxDeliveryDays,
+                order.deliverySource,
+                order.deliveryModelVersion,
                 order.items
                         .stream()
                         .map(OrderItemResponse::fromEntity)

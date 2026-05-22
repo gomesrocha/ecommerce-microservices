@@ -34,6 +34,21 @@ public class Order {
     @Column(name = "updated_at")
     public LocalDateTime updatedAt;
 
+    @Column(name = "min_delivery_days")
+    public Integer minDeliveryDays;
+
+    @Column(name = "estimated_delivery_days")
+    public Integer estimatedDeliveryDays;
+
+    @Column(name = "max_delivery_days")
+    public Integer maxDeliveryDays;
+
+    @Column(name = "delivery_source", length = 50)
+    public String deliverySource;
+
+    @Column(name = "delivery_model_version", length = 80)
+    public String deliveryModelVersion;
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
