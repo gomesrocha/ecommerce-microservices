@@ -12,3 +12,11 @@ Branch planejada:
 
 ```text
 feature/dockerize-services
+
+
+
+## TD-004: Implementar Transactional Outbox no order-api
+
+Atualmente o order-api publica eventos diretamente no RabbitMQ após persistir o pedido.
+
+Para maior confiabilidade, implementar o padrão Transactional Outbox, salvando os eventos em uma tabela `outbox_events` na mesma transação do pedido e publicando-os posteriormente por um worker.

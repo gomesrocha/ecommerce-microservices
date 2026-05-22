@@ -11,6 +11,7 @@ import br.com.ecommerce.domain.OrderStatus;
 import br.com.ecommerce.dto.CreateOrderItemRequest;
 import br.com.ecommerce.dto.CreateOrderRequest;
 import br.com.ecommerce.dto.OrderResponse;
+import br.com.ecommerce.event.OrderEventPublisher;
 import br.com.ecommerce.repository.OrderRepository;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -38,6 +39,9 @@ public class OrderService {
     @Inject
     @RestClient
     DeliveryEstimateClient deliveryEstimateClient;
+
+    @Inject
+    OrderEventPublisher orderEventPublisher;
 
     @Transactional
     public OrderResponse create(CreateOrderRequest request) {
@@ -86,7 +90,9 @@ public class OrderService {
 
         order.status = OrderStatus.CONFIRMED;
 
-        orderRepository.persist(order);
+        orderRepository.persistAndFlush(order);
+
+        orderEventPublisher.publishOrderCreated(order);
 
         return OrderResponse.fromEntity(order);
     }
@@ -125,6 +131,10 @@ public class OrderService {
         }
 
         order.status = OrderStatus.CANCELED;
+
+        orderRepository.flush();
+
+        orderEventPublisher.publishOrderCanceled(order);
 
         return OrderResponse.fromEntity(order);
     }
