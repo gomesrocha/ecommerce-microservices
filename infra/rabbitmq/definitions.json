@@ -1,4 +1,25 @@
 {
+  "vhosts": [
+    {
+      "name": "/"
+    }
+  ],
+  "users": [
+    {
+      "name": "ecommerce",
+      "password": "ecommerce",
+      "tags": "administrator"
+    }
+  ],
+  "permissions": [
+    {
+      "user": "ecommerce",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
   "exchanges": [
     {
       "name": "ecommerce.events",
