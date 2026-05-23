@@ -20,6 +20,7 @@ public record OrderResponse(
         String deliveryModelVersion,
         BigDecimal fraudRiskScore,
         String fraudReason,
+        String stockReason,
         List<OrderItemResponse> items,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -39,6 +40,7 @@ public record OrderResponse(
                 order.deliveryModelVersion,
                 order.fraudRiskScore,
                 order.fraudReason,
+                order.stockReason,
                 order.items
                         .stream()
                         .map(OrderItemResponse::fromEntity)

@@ -94,8 +94,42 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
-    }    
-
+    },
+    {
+      "name": "product.stock-reservation",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "stock.reserved",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "stock.rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.stock-reserved",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.stock-rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }
   ],
   "bindings": [
     {
@@ -168,6 +202,46 @@
       "destination": "order.fraud-rejected",
       "destination_type": "queue",
       "routing_key": "fraud.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "product.stock-reservation",
+      "destination_type": "queue",
+      "routing_key": "product.stock.reserve",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "stock.reserved",
+      "destination_type": "queue",
+      "routing_key": "stock.reserved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "stock.rejected",
+      "destination_type": "queue",
+      "routing_key": "stock.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "order.stock-reserved",
+      "destination_type": "queue",
+      "routing_key": "stock.reserved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "order.stock-rejected",
+      "destination_type": "queue",
+      "routing_key": "stock.rejected",
       "arguments": {}
     }
   ]
