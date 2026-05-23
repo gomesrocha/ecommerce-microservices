@@ -49,6 +49,12 @@ public class Order {
     @Column(name = "delivery_model_version", length = 80)
     public String deliveryModelVersion;
 
+    @Column(name = "fraud_risk_score", precision = 5, scale = 2)
+    public BigDecimal fraudRiskScore;
+
+    @Column(name = "fraud_reason", length = 500)
+    public String fraudReason;
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
@@ -81,7 +87,8 @@ public class Order {
     }
 
     public boolean canBeCanceled() {
-        return OrderStatus.CREATED.equals(this.status)
-                || OrderStatus.CONFIRMED.equals(this.status);
+    return OrderStatus.CREATED.equals(this.status)
+            || OrderStatus.WAITING_FRAUD.equals(this.status)
+            || OrderStatus.CONFIRMED.equals(this.status);
     }
 }

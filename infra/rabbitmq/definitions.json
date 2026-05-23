@@ -80,6 +80,20 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
+    },
+    {
+      "name": "order.fraud-approved",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.fraud-rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
     }    
 
   ],
@@ -136,6 +150,22 @@
       "source": "ecommerce.events",
       "vhost": "/",
       "destination": "fraud.rejected",
+      "destination_type": "queue",
+      "routing_key": "fraud.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "order.fraud-approved",
+      "destination_type": "queue",
+      "routing_key": "fraud.approved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "order.fraud-rejected",
       "destination_type": "queue",
       "routing_key": "fraud.rejected",
       "arguments": {}

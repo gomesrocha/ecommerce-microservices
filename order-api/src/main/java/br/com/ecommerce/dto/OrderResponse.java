@@ -18,6 +18,8 @@ public record OrderResponse(
         Integer maxDeliveryDays,
         String deliverySource,
         String deliveryModelVersion,
+        BigDecimal fraudRiskScore,
+        String fraudReason,
         List<OrderItemResponse> items,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -35,6 +37,8 @@ public record OrderResponse(
                 order.maxDeliveryDays,
                 order.deliverySource,
                 order.deliveryModelVersion,
+                order.fraudRiskScore,
+                order.fraudReason,
                 order.items
                         .stream()
                         .map(OrderItemResponse::fromEntity)

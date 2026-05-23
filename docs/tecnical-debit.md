@@ -576,6 +576,8 @@ Isso é conveniente durante o desenvolvimento, mas não é recomendado como estr
 
 Futuramente, adotar ferramenta de migração.
 
+ Observação: durante a evolução do `OrderStatus`, foi necessário atualizar manualmente a constraint `customer_orders_status_check`, pois o `hibernate-orm.database.generation=update` não recriou corretamente a constraint do enum. Esse caso reforça a necessidade de adoção de Flyway ou Liquibase.
+
 Opções:
 
 - Flyway;
