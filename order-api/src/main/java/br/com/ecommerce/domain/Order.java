@@ -55,6 +55,9 @@ public class Order {
     @Column(name = "fraud_reason", length = 500)
     public String fraudReason;
 
+    @Column(name = "stock_reason", length = 500)
+    public String stockReason;
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
@@ -88,6 +91,7 @@ public class Order {
 
     public boolean canBeCanceled() {
     return OrderStatus.CREATED.equals(this.status)
+            || OrderStatus.WAITING_STOCK.equals(this.status)
             || OrderStatus.WAITING_FRAUD.equals(this.status)
             || OrderStatus.CONFIRMED.equals(this.status);
     }

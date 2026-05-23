@@ -88,11 +88,11 @@ public class OrderService {
         order.deliverySource = deliveryEstimate.source();
         order.deliveryModelVersion = deliveryEstimate.modelVersion();
 
-        order.status = OrderStatus.WAITING_FRAUD;
+        order.status = OrderStatus.WAITING_STOCK;
 
         orderRepository.persistAndFlush(order);
 
-        orderEventPublisher.publishOrderCreated(order);
+        orderEventPublisher.publishStockReservationRequested(order);
 
         return OrderResponse.fromEntity(order);
     }
@@ -197,10 +197,8 @@ public class OrderService {
             throw new BadRequestException("Produto inativo: " + product.id());
         }
 
-        if (!product.hasStock(quantity)) {
-            throw new BadRequestException(
-                    "Estoque insuficiente para o produto " + product.id()
-            );
+        if (quantity == null || quantity <= 0) {
+            throw new BadRequestException("Quantidade inválida para o produto " + product.id());
         }
     }
 
@@ -276,4 +274,42 @@ public class OrderService {
 
         return OrderResponse.fromEntity(order);
     }
+
+    @Transactional
+public OrderResponse markStockReserved(Long orderId, String reason) {
+    Order order = getOrderOrThrow(orderId);
+
+    if (OrderStatus.CANCELED.equals(order.status)
+            || OrderStatus.REJECTED.equals(order.status)
+            || OrderStatus.CONFIRMED.equals(order.status)) {
+        return OrderResponse.fromEntity(order);
+    }
+
+    order.status = OrderStatus.WAITING_FRAUD;
+    order.stockReason = reason;
+
+    orderRepository.flush();
+
+    orderEventPublisher.publishOrderCreated(order);
+
+    return OrderResponse.fromEntity(order);
+}
+
+@Transactional
+public OrderResponse markStockRejected(Long orderId, String reason) {
+    Order order = getOrderOrThrow(orderId);
+
+    if (OrderStatus.CANCELED.equals(order.status)
+            || OrderStatus.CONFIRMED.equals(order.status)
+            || OrderStatus.REJECTED.equals(order.status)) {
+        return OrderResponse.fromEntity(order);
+    }
+
+    order.status = OrderStatus.REJECTED;
+    order.stockReason = reason;
+
+    orderRepository.flush();
+
+    return OrderResponse.fromEntity(order);
+}
 }

@@ -14,6 +14,7 @@ import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
+import br.com.ecommerce.event.StockReservationItem;
 
 import java.util.List;
 import java.util.Map;
@@ -180,5 +181,30 @@ public class ProductService {
         }
 
         return value.trim();
+    }
+    @Transactional
+    public String reserveStock(List<StockReservationItem> items) {
+        if (items == null || items.isEmpty()) {
+            throw new BadRequestException("Solicitação de reserva de estoque sem itens");
+        }
+
+        for (StockReservationItem item : items) {
+            Product product = getProductOrThrow(item.productId());
+
+            if (!product.isActive()) {
+                throw new BadRequestException("Produto inativo: " + item.productId());
+            }
+
+            if (!product.hasStock(item.quantity())) {
+                throw new BadRequestException("Estoque insuficiente para o produto " + item.productId());
+            }
+        }
+
+        for (StockReservationItem item : items) {
+            Product product = getProductOrThrow(item.productId());
+            product.stockQuantity = product.stockQuantity - item.quantity();
+        }
+
+        return "Estoque reservado com sucesso";
     }
 }

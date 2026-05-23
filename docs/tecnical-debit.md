@@ -714,3 +714,24 @@ Na raiz do monorepo:
 ```bash
 git status
 ```
+
+## TD-027: Implementar controle idempotente de reserva de estoque
+
+O product-api realiza a reserva de estoque ao consumir `product.stock.reserve`, mas ainda não possui controle idempotente por pedido e produto.
+
+Se uma mensagem for reprocessada, o estoque pode ser baixado mais de uma vez.
+
+Evoluções previstas:
+
+- criar tabela `stock_reservations`;
+- registrar `orderId`, `productId` e quantidade reservada;
+- impedir reserva duplicada;
+- permitir compensação futura de estoque;
+- publicar eventos com correlationId.
+
+Branch planejada:
+
+```text
+feature/stock-reservation-idempotency
+```
+
