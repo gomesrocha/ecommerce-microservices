@@ -88,7 +88,7 @@ public class OrderService {
         order.deliverySource = deliveryEstimate.source();
         order.deliveryModelVersion = deliveryEstimate.modelVersion();
 
-        order.status = OrderStatus.CONFIRMED;
+        order.status = OrderStatus.WAITING_FRAUD;
 
         orderRepository.persistAndFlush(order);
 
@@ -234,5 +234,46 @@ public class OrderService {
         }
 
         return state.trim().toUpperCase();
+    }
+    @Transactional
+    public OrderResponse approveFraud(Long orderId, BigDecimal riskScore, String reason) {
+        Order order = getOrderOrThrow(orderId);
+
+        if (OrderStatus.CANCELED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        if (OrderStatus.REJECTED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        order.status = OrderStatus.CONFIRMED;
+        order.fraudRiskScore = riskScore;
+        order.fraudReason = reason;
+
+        orderRepository.flush();
+
+        return OrderResponse.fromEntity(order);
+    }
+
+    @Transactional
+    public OrderResponse rejectFraud(Long orderId, BigDecimal riskScore, String reason) {
+        Order order = getOrderOrThrow(orderId);
+
+        if (OrderStatus.CANCELED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        if (OrderStatus.CONFIRMED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        order.status = OrderStatus.REJECTED;
+        order.fraudRiskScore = riskScore;
+        order.fraudReason = reason;
+
+        orderRepository.flush();
+
+        return OrderResponse.fromEntity(order);
     }
 }
