@@ -59,7 +59,29 @@
       "durable": true,
       "auto_delete": false,
       "arguments": {}
-    }
+    },
+    {
+      "name": "fraud.order-created",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "fraud.approved",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "fraud.rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    }    
+
   ],
   "bindings": [
     {
@@ -92,6 +114,30 @@
       "destination": "delivery.estimate-requested",
       "destination_type": "queue",
       "routing_key": "delivery.estimate.requested",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "fraud.order-created",
+      "destination_type": "queue",
+      "routing_key": "order.created",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "fraud.approved",
+      "destination_type": "queue",
+      "routing_key": "fraud.approved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "fraud.rejected",
+      "destination_type": "queue",
+      "routing_key": "fraud.rejected",
       "arguments": {}
     }
   ]
