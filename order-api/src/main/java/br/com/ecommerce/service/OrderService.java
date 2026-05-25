@@ -30,6 +30,11 @@ import br.com.ecommerce.domain.OrderStatusChangeTrigger;
 import br.com.ecommerce.repository.OrderStatusHistoryRepository;
 import br.com.ecommerce.dto.OrderStatusHistoryResponse;
 
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.WebApplicationException;
+import org.jboss.resteasy.reactive.ClientWebApplicationException;
+
 @ApplicationScoped
 public class OrderService {
 
@@ -170,21 +175,20 @@ public class OrderService {
     private ProductClientResponse findProductOrThrow(Long productId) {
         try {
             return productCatalogGateway.getProductById(productId);
+
+        } catch (ServiceUnavailableException exception) {
+            throw exception;
+
         } catch (WebApplicationException exception) {
-            if (exception.getResponse() != null
-                    && exception.getResponse().getStatus() == Response.Status.NOT_FOUND.getStatusCode()) {
-                throw new NotFoundException("Produto não encontrado: " + productId);
+            int status = exception.getResponse() != null
+                    ? exception.getResponse().getStatus()
+                    : 0;
+
+            if (status == 404) {
+                throw new BadRequestException("Produto não encontrado: " + productId);
             }
 
-            throw new WebApplicationException(
-                    "Falha ao consultar o product-api",
-                    Response.Status.BAD_GATEWAY
-            );
-        } catch (Exception exception) {
-            throw new WebApplicationException(
-                    "Product-api indisponível no momento",
-                    Response.Status.BAD_GATEWAY
-            );
+            throw exception;
         }
     }
 
