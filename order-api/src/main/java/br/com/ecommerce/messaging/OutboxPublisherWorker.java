@@ -1,0 +1,88 @@
+package br.com.ecommerce.messaging;
+
+import br.com.ecommerce.domain.OutboxEvent;
+import br.com.ecommerce.service.OutboxService;
+import io.quarkus.scheduler.Scheduled;
+import io.vertx.core.json.JsonObject;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import org.eclipse.microprofile.reactive.messaging.Channel;
+import org.eclipse.microprofile.reactive.messaging.Emitter;
+import org.jboss.logging.Logger;
+
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+@ApplicationScoped
+public class OutboxPublisherWorker {
+
+    private static final Logger LOG = Logger.getLogger(OutboxPublisherWorker.class);
+
+    @Inject
+    OutboxService outboxService;
+
+    @Inject
+    @Channel("stock-reservation-requested-out")
+    Emitter<JsonObject> stockReservationRequestedEmitter;
+
+    @Inject
+    @Channel("order-created-out")
+    Emitter<JsonObject> orderCreatedEmitter;
+
+    @Inject
+    @Channel("order-canceled-out")
+    Emitter<JsonObject> orderCanceledEmitter;
+
+    @Scheduled(every = "2s")
+    void publishPendingEvents() {
+        List<OutboxEvent> events = outboxService.listPending(20);
+
+        if (events.isEmpty()) {
+            return;
+        }
+
+        for (OutboxEvent event : events) {
+            publish(event);
+        }
+    }
+
+    private void publish(OutboxEvent event) {
+        try {
+            JsonObject payload = new JsonObject(event.payload);
+
+            Emitter<JsonObject> emitter = resolveEmitter(event.routingKey);
+
+            emitter.send(payload)
+                    .toCompletableFuture()
+                    .get(10, TimeUnit.SECONDS);
+
+            outboxService.markPublished(event.id);
+
+            LOG.infof(
+                    "Evento da outbox publicado. id=%s, eventType=%s, routingKey=%s",
+                    event.id,
+                    event.eventType,
+                    event.routingKey
+            );
+        } catch (Exception exception) {
+            LOG.errorf(
+                    exception,
+                    "Falha ao publicar evento da outbox. id=%s, eventType=%s, routingKey=%s",
+                    event.id,
+                    event.eventType,
+                    event.routingKey
+            );
+
+            outboxService.markFailed(event.id, exception);
+        }
+    }
+
+    private Emitter<JsonObject> resolveEmitter(String routingKey) {
+        return switch (routingKey) {
+            case "product.stock.reserve" -> stockReservationRequestedEmitter;
+            case "order.created" -> orderCreatedEmitter;
+            case "order.canceled" -> orderCanceledEmitter;
+            default -> throw new IllegalArgumentException("Routing key não suportada pela outbox: " + routingKey);
+        };
+    }
+}
