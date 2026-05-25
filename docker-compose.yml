@@ -60,8 +60,8 @@ services:
       OTEL_ENABLED: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: user-api
-    ports:
-      - "8094:8080"
+    expose:
+      - "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -93,8 +93,8 @@ services:
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: product-api
 
-    ports:
-      - "8095:8080"
+    expose:
+      - "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -121,8 +121,8 @@ services:
       OTEL_ENABLED: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: delivery-estimator-api
-    ports:
-      - "8097:8080"
+    expose:
+      - "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -153,8 +153,8 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
       RABBITMQ_VIRTUAL_HOST: /
-    ports:
-      - "8098:8080"
+    expose:
+      - "8080"
     depends_on:
       postgres:
         condition: service_healthy
@@ -190,8 +190,8 @@ services:
       OTEL_ENABLED: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: order-api
-    ports:
-      - "8096:8080"
+    expose:
+      - "8080"
     depends_on:
       postgres:
         condition: service_healthy
