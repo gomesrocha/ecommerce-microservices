@@ -25,6 +25,9 @@ import org.eclipse.microprofile.rest.client.inject.RestClient;
 
 import java.math.BigDecimal;
 import java.util.List;
+import br.com.ecommerce.domain.OrderStatusChangeTrigger;
+import br.com.ecommerce.repository.OrderStatusHistoryRepository;
+import br.com.ecommerce.dto.OrderStatusHistoryResponse;
 
 @ApplicationScoped
 public class OrderService {
@@ -42,6 +45,12 @@ public class OrderService {
 
     @Inject
     OrderEventPublisher orderEventPublisher;
+
+    @Inject
+    OrderStateMachineService orderStateMachineService;
+
+    @Inject
+    OrderStatusHistoryRepository orderStatusHistoryRepository;
 
     @Transactional
     public OrderResponse create(CreateOrderRequest request) {
@@ -88,12 +97,20 @@ public class OrderService {
         order.deliverySource = deliveryEstimate.source();
         order.deliveryModelVersion = deliveryEstimate.modelVersion();
 
-        order.status = OrderStatus.WAITING_STOCK;
+        order.status = OrderStatus.CREATED;
 
         orderRepository.persistAndFlush(order);
 
-        orderEventPublisher.publishStockReservationRequested(order);
+        orderStateMachineService.transition(
+                order,
+                OrderStatus.WAITING_STOCK,
+                OrderStatusChangeTrigger.ORDER_CREATED,
+                "Pedido criado e aguardando reserva de estoque"
+        );
 
+        orderRepository.flush();
+
+        orderEventPublisher.publishStockReservationRequested(order);
         return OrderResponse.fromEntity(order);
     }
 
@@ -130,7 +147,12 @@ public class OrderService {
             throw new BadRequestException("O pedido não pode ser cancelado no status atual");
         }
 
-        order.status = OrderStatus.CANCELED;
+        orderStateMachineService.transition(
+            order,
+            OrderStatus.CANCELED,
+            OrderStatusChangeTrigger.ORDER_CANCELED,
+            "Pedido cancelado"
+        );
 
         orderRepository.flush();
 
@@ -245,9 +267,15 @@ public class OrderService {
             return OrderResponse.fromEntity(order);
         }
 
-        order.status = OrderStatus.CONFIRMED;
         order.fraudRiskScore = riskScore;
         order.fraudReason = reason;
+
+        orderStateMachineService.transition(
+                order,
+                OrderStatus.CONFIRMED,
+                OrderStatusChangeTrigger.FRAUD_APPROVED,
+                reason
+        );
 
         orderRepository.flush();
 
@@ -266,9 +294,15 @@ public class OrderService {
             return OrderResponse.fromEntity(order);
         }
 
-        order.status = OrderStatus.REJECTED;
         order.fraudRiskScore = riskScore;
         order.fraudReason = reason;
+
+        orderStateMachineService.transition(
+                order,
+                OrderStatus.REJECTED,
+                OrderStatusChangeTrigger.FRAUD_REJECTED,
+                reason
+        );
 
         orderRepository.flush();
 
@@ -276,40 +310,63 @@ public class OrderService {
     }
 
     @Transactional
-public OrderResponse markStockReserved(Long orderId, String reason) {
-    Order order = getOrderOrThrow(orderId);
+    public OrderResponse markStockReserved(Long orderId, String reason) {
+        Order order = getOrderOrThrow(orderId);
 
-    if (OrderStatus.CANCELED.equals(order.status)
-            || OrderStatus.REJECTED.equals(order.status)
-            || OrderStatus.CONFIRMED.equals(order.status)) {
+        if (OrderStatus.CANCELED.equals(order.status)
+                || OrderStatus.REJECTED.equals(order.status)
+                || OrderStatus.CONFIRMED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        order.stockReason = reason;
+
+        orderStateMachineService.transition(
+                order,
+                OrderStatus.WAITING_FRAUD,
+                OrderStatusChangeTrigger.STOCK_RESERVED,
+                reason
+        );
+
+        orderRepository.flush();
+
+        orderEventPublisher.publishOrderCreated(order);
+
         return OrderResponse.fromEntity(order);
     }
 
-    order.status = OrderStatus.WAITING_FRAUD;
-    order.stockReason = reason;
+    @Transactional
+    public OrderResponse markStockRejected(Long orderId, String reason) {
+        Order order = getOrderOrThrow(orderId);
 
-    orderRepository.flush();
+        if (OrderStatus.CANCELED.equals(order.status)
+                || OrderStatus.CONFIRMED.equals(order.status)
+                || OrderStatus.REJECTED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
 
-    orderEventPublisher.publishOrderCreated(order);
+        order.stockReason = reason;
 
-    return OrderResponse.fromEntity(order);
-}
+        orderStateMachineService.transition(
+                order,
+                OrderStatus.REJECTED,
+                OrderStatusChangeTrigger.STOCK_REJECTED,
+                reason
+        );
 
-@Transactional
-public OrderResponse markStockRejected(Long orderId, String reason) {
-    Order order = getOrderOrThrow(orderId);
+        orderRepository.flush();
 
-    if (OrderStatus.CANCELED.equals(order.status)
-            || OrderStatus.CONFIRMED.equals(order.status)
-            || OrderStatus.REJECTED.equals(order.status)) {
         return OrderResponse.fromEntity(order);
     }
 
-    order.status = OrderStatus.REJECTED;
-    order.stockReason = reason;
+    public List<OrderStatusHistoryResponse> listStatusHistory(Long orderId) {
+        getOrderOrThrow(orderId);
 
-    orderRepository.flush();
+        return orderStatusHistoryRepository
+                .listByOrderId(orderId)
+                .stream()
+                .map(OrderStatusHistoryResponse::fromEntity)
+                .toList();
+    }
 
-    return OrderResponse.fromEntity(order);
-}
 }
