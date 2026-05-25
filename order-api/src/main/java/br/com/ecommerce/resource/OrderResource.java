@@ -11,6 +11,7 @@ import jakarta.ws.rs.core.Response;
 
 import java.net.URI;
 import java.util.List;
+import br.com.ecommerce.dto.OrderStatusHistoryResponse;
 
 @Path("/orders")
 @Produces(MediaType.APPLICATION_JSON)
@@ -40,10 +41,18 @@ public class OrderResource {
     }
 
     @GET
+    @Path("/{id}/history")
+    public List<OrderStatusHistoryResponse> listStatusHistory(@PathParam("id") Long id) {
+        return orderService.listStatusHistory(id);
+    }
+
+    @GET
     @Path("/{id}")
     public OrderResponse findById(@PathParam("id") Long id) {
         return orderService.findById(id);
     }
+
+
 
     @PATCH
     @Path("/{id}/cancel")
