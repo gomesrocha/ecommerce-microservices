@@ -13,6 +13,7 @@ import br.com.ecommerce.dto.CreateOrderRequest;
 import br.com.ecommerce.dto.OrderResponse;
 import br.com.ecommerce.event.OrderEventPublisher;
 import br.com.ecommerce.repository.OrderRepository;
+import br.com.ecommerce.service.resilience.ProductCatalogGateway;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -36,8 +37,7 @@ public class OrderService {
     OrderRepository orderRepository;
 
     @Inject
-    @RestClient
-    ProductClient productClient;
+    ProductCatalogGateway productCatalogGateway;
 
     @Inject
     @RestClient
@@ -169,7 +169,7 @@ public class OrderService {
 
     private ProductClientResponse findProductOrThrow(Long productId) {
         try {
-            return productClient.findById(productId);
+            return productCatalogGateway.getProductById(productId);
         } catch (WebApplicationException exception) {
             if (exception.getResponse() != null
                     && exception.getResponse().getStatus() == Response.Status.NOT_FOUND.getStatusCode()) {
