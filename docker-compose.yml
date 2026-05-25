@@ -3,14 +3,21 @@ services:
     image: postgres:16
     container_name: ecommerce-postgres
     environment:
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce}
+      POSTGRES_USER: ${POSTGRES_USER:-ecommerce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
     ports:
       - "5432:5432"
     volumes:
       - ecommerce_pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecommerce} -d ${POSTGRES_DB:-ecommerce}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-net
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -19,13 +26,161 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: ecommerce
-      RABBITMQ_DEFAULT_PASS: ecommerce
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
     volumes:
       - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
       - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
       - ecommerce_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-net
+
+  user-api:
+    build:
+      context: ./user-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-user-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      JWT_ISSUER: user-api
+      JWT_ACCESS_TOKEN_MINUTES: 30
+      JWT_REFRESH_TOKEN_MINUTES: 10080
+    ports:
+      - "8094:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  product-api:
+    build:
+      context: ./product-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-product-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+      RABBITMQ_VIRTUAL_HOST: /
+    ports:
+      - "8095:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  delivery-estimator-api:
+    build:
+      context: ./delivery-estimator-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-delivery-estimator-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+    ports:
+      - "8097:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  fraud-detector-api:
+    build:
+      context: ./fraud-detector-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-fraud-detector-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+      RABBITMQ_VIRTUAL_HOST: /
+    ports:
+      - "8098:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - ecommerce-net
+
+  order-api:
+    build:
+      context: ./order-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-order-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      PRODUCT_API_URL: http://product-api:8080
+      DELIVERY_ESTIMATOR_API_URL: http://delivery-estimator-api:8080
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+      RABBITMQ_VIRTUAL_HOST: /
+    ports:
+      - "8096:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      product-api:
+        condition: service_started
+      delivery-estimator-api:
+        condition: service_started
+      fraud-detector-api:
+        condition: service_started
+    networks:
+      - ecommerce-net
 
 volumes:
   ecommerce_pgdata:
   ecommerce_rabbitmq_data:
+
+networks:
+  ecommerce-net:
+    driver: bridge

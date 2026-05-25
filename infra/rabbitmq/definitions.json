@@ -47,13 +47,6 @@
       "arguments": {}
     },
     {
-      "name": "products.stock-reservation",
-      "vhost": "/",
-      "durable": true,
-      "auto_delete": false,
-      "arguments": {}
-    },
-    {
       "name": "delivery.estimate-requested",
       "vhost": "/",
       "durable": true,
@@ -146,14 +139,6 @@
       "destination": "orders.canceled",
       "destination_type": "queue",
       "routing_key": "order.canceled",
-      "arguments": {}
-    },
-    {
-      "source": "ecommerce.events",
-      "vhost": "/",
-      "destination": "products.stock-reservation",
-      "destination_type": "queue",
-      "routing_key": "product.stock.reserve",
       "arguments": {}
     },
     {
