@@ -176,7 +176,27 @@ services:
         condition: service_started
     networks:
       - ecommerce-net
-
+  api-gateway:
+    image: krakend:2.13
+    container_name: ecommerce-api-gateway
+    command: ["run", "-c", "/etc/krakend/krakend.json"]
+    ports:
+      - "8099:8080"
+    volumes:
+      - ./gateway/krakend.json:/etc/krakend/krakend.json:ro
+    depends_on:
+      user-api:
+        condition: service_started
+      product-api:
+        condition: service_started
+      order-api:
+        condition: service_started
+      delivery-estimator-api:
+        condition: service_started
+      fraud-detector-api:
+        condition: service_started
+    networks:
+      - ecommerce-net
 volumes:
   ecommerce_pgdata:
   ecommerce_rabbitmq_data:
