@@ -2,6 +2,7 @@ package br.com.ecommerce.messaging;
 
 import br.com.ecommerce.event.StockReservationRequestedEvent;
 import br.com.ecommerce.service.ProductService;
+import br.com.ecommerce.service.StockReservationResult;
 import io.smallrye.common.annotation.Blocking;
 import io.vertx.core.json.JsonObject;
 import jakarta.enterprise.context.ApplicationScoped;
@@ -33,13 +34,24 @@ public class StockReservationConsumer {
 
             LOG.infof("Evento StockReservationRequested recebido. orderId=%s", event.payload().orderId());
 
-            String reason = productService.reserveStock(event.payload().items());
-
-            stockEventPublisher.publishReserved(
+            StockReservationResult result = productService.reserveStock(
                     event.payload().orderId(),
-                    event.payload().userId(),
-                    reason
+                    event.payload().items()
             );
+
+            if (result.reserved()) {
+                stockEventPublisher.publishReserved(
+                        event.payload().orderId(),
+                        event.payload().userId(),
+                        result.reason()
+                );
+            } else {
+                stockEventPublisher.publishRejected(
+                        event.payload().orderId(),
+                        event.payload().userId(),
+                        result.reason()
+                );
+            }
 
             return message.ack();
         } catch (Exception exception) {
