@@ -17,8 +17,7 @@ public record CreateOrderRequest(
         @Pattern(regexp = "^[A-Za-z]{2}$", message = "O estado do cliente deve ter 2 letras. Exemplo: SE")
         String customerState,
 
-        @Valid
         @NotEmpty(message = "O pedido deve possuir pelo menos um item")
-        List<CreateOrderItemRequest> items
+        List<@Valid CreateOrderItemRequest> items
 ) {
 }

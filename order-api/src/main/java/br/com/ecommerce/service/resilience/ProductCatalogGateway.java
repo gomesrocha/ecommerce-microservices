@@ -33,9 +33,13 @@ public class ProductCatalogGateway {
     @CircuitBreaker(
             requestVolumeThreshold = 4,
             failureRatio = 0.5,
-            delay = 5000
+            delay = 5000,
+            skipOn = {WebApplicationException.class}
     )
-    @Fallback(fallbackMethod = "fallbackProduct")
+    @Fallback(
+            fallbackMethod = "fallbackProduct",
+            skipOn = {WebApplicationException.class}
+    )
     public ProductClientResponse getProductById(Long productId) {
         return productClient.findById(productId);
     }
