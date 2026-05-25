@@ -1,102 +1,39 @@
-# Technical Debt
+# Technical Debt - Pendências Atuais
 
-Este documento registra os principais débitos técnicos, melhorias planejadas e features futuras identificadas durante a construção incremental do monorepo de microsserviços do sistema de pedidos.
+Este documento lista apenas os débitos técnicos, melhorias pendentes e features futuras ainda relevantes para o monorepo de microsserviços do sistema de pedidos.
 
-A estratégia do projeto é evoluir por pequenas features, mantendo o sistema funcional a cada etapa. Alguns itens começaram como débitos técnicos e depois foram parcial ou totalmente resolvidos em branches específicas. Quando isso acontece, o status é atualizado, mas o item permanece documentado para manter o histórico arquitetural.
-
----
-
-## Situação atual do projeto
-
-O monorepo já possui os seguintes serviços principais:
-
-```text
-user-api
-product-api
-order-api
-delivery-estimator-api
-fraud-detector-api
-api-gateway / KrakenD
-```
-
-Infraestrutura local atual:
-
-```text
-PostgreSQL
-RabbitMQ
-KrakenD
-OpenTelemetry Collector
-Tempo
-Prometheus
-Grafana
-```
-
-Fluxo principal atual do pedido:
-
-```text
-Cliente
-  ↓
-KrakenD
-  ↓
-order-api
-  ↓ REST
-product-api / delivery-estimator-api
-  ↓
-order-api salva pedido como WAITING_STOCK
-  ↓ Outbox
-product.stock.reserve
-  ↓ RabbitMQ
-product-api reserva estoque
-  ↓ RabbitMQ
-stock.reserved / stock.rejected
-  ↓
-order-api atualiza status
-  ↓ Outbox
-order.created
-  ↓ RabbitMQ
-fraud-detector-api analisa fraude
-  ↓ RabbitMQ
-fraud.approved / fraud.rejected
-  ↓
-order-api atualiza para CONFIRMED ou REJECTED
-```
+Itens já concluídos, como Dockerização JVM, KrakenD, Observabilidade inicial, Saga básica, Transactional Outbox no `order-api` e Idempotência inicial de reserva de estoque, foram removidos da lista principal para manter o backlog técnico mais limpo.
 
 ---
 
-## TD-001: Dockerizar os microsserviços
+## Itens já concluídos e removidos da lista principal
 
-**Status:** concluído inicialmente na feature `dockerize-services`.
-
-Os microsserviços Quarkus passaram a ter Dockerfile JVM e foram adicionados ao `docker-compose.yml`, junto com PostgreSQL, RabbitMQ e demais componentes.
-
-Serviços dockerizados:
-
-- user-api;
-- product-api;
-- order-api;
-- delivery-estimator-api;
-- fraud-detector-api.
-
-O Docker Compose agora permite subir a stack completa localmente.
-
-Evoluções futuras:
-
-- melhorar healthchecks dos microsserviços;
-- reduzir tamanho das imagens;
-- criar imagem base comum;
-- criar pipeline automatizado de build/push;
-- preparar imagens para Kubernetes;
-- validar execução com múltiplas réplicas.
-
-Branch concluída:
+Os itens abaixo já foram implementados em features anteriores e não aparecem mais como débitos pendentes principais:
 
 ```text
 feature/dockerize-services
+feature/api-gateway-krakend
+feature/observability
+feature/order-saga-flow
+feature/product-stock-events
+feature/order-outbox-pattern
+feature/stock-reservation-idempotency
+feature/database-migrations
+feature/fraud-detector-api
+feature/order-fraud-integration
+feature/order-delivery-integration
+feature/rabbitmq-order-events
 ```
+
+Observação: alguns itens concluídos ainda possuem evoluções futuras, como compensações da Saga, Outbox em outros serviços, dashboards customizados e migrações dos demais schemas. Essas evoluções aparecem como novos débitos pendentes específicos.
 
 ---
 
-## TD-002: Criar imagens nativas com Quarkus
+# Débitos técnicos pendentes
+
+---
+
+## TD-001: Criar imagens nativas com Quarkus
 
 **Status:** aberto.
 
@@ -120,11 +57,11 @@ feature/native-dockerfiles
 
 ---
 
-## TD-003: Criar manifests Kubernetes ou Helm Charts
+## TD-002: Criar manifests Kubernetes ou Helm Charts
 
 **Status:** aberto.
 
-Após a dockerização, será necessário criar a estrutura de implantação em Kubernetes.
+Após a dockerização dos serviços, será necessário criar a estrutura de implantação em Kubernetes.
 
 A primeira versão pode usar manifests YAML simples. Depois, pode evoluir para Helm Charts ou Kustomize.
 
@@ -140,7 +77,8 @@ Itens previstos:
 - livenessProbe;
 - resource requests e limits;
 - configuração de variáveis de ambiente;
-- integração com stack de observabilidade.
+- integração com stack de observabilidade;
+- estratégia de rollout e rollback.
 
 Branch planejada:
 
@@ -150,64 +88,18 @@ feature/kubernetes-deployment
 
 ---
 
-## TD-004: Implementar Transactional Outbox no order-api
-
-**Status:** concluído na feature `order-outbox-pattern`.
-
-O `order-api` deixou de publicar eventos diretamente no RabbitMQ logo após persistir o pedido.
-
-Agora o fluxo é:
-
-```text
-OrderService
-  ↓
-salva pedido / altera status
-  ↓
-salva evento em orders.outbox_events
-  ↓
-commit da transação
-  ↓
-OutboxPublisherWorker publica no RabbitMQ
-  ↓
-marca evento como PUBLISHED
-```
-
-Eventos atualmente enviados pela Outbox do `order-api`:
-
-- StockReservationRequested;
-- OrderCreated;
-- OrderCanceled.
-
-Evoluções futuras:
-
-- adicionar status `PROCESSING`;
-- adicionar locking para múltiplas instâncias;
-- evitar que duas réplicas publiquem o mesmo evento;
-- criar dead letter para eventos com muitas falhas;
-- adicionar painel administrativo da outbox;
-- adicionar correlação por `correlationId`;
-- propagar `eventId` em todos os consumidores.
-
-Branch concluída:
-
-```text
-feature/order-outbox-pattern
-```
-
----
-
-## TD-005: Implementar idempotência no consumo e publicação de eventos
+## TD-003: Implementar idempotência geral no consumo de eventos
 
 **Status:** aberto.
 
-Os eventos possuem `eventId`, mas ainda não há estratégia completa de idempotência nos consumidores.
+A reserva de estoque já recebeu controle idempotente inicial, mas ainda falta uma estratégia geral de idempotência para os consumidores de eventos.
 
 Riscos:
 
 - uma mensagem pode ser reentregue;
 - um consumidor pode aplicar o mesmo efeito duas vezes;
-- um evento de estoque pode baixar o estoque duplicadamente;
-- um evento de fraude pode tentar mudar status já finalizado.
+- eventos de fraude podem tentar alterar status já finalizado;
+- eventos futuros de notificação podem ser enviados em duplicidade.
 
 Itens previstos:
 
@@ -215,7 +107,8 @@ Itens previstos:
 - usar `eventId` como chave de idempotência;
 - impedir efeitos duplicados;
 - tratar reentrega sem inconsistência;
-- padronizar estratégia de retry.
+- padronizar estratégia de retry;
+- criar métricas para eventos duplicados.
 
 Branch planejada:
 
@@ -225,45 +118,24 @@ feature/event-idempotency
 
 ---
 
-## TD-006: Formalizar Saga do fluxo de pedido
+## TD-004: Evoluir Saga para suporte a compensações
 
-**Status:** concluído parcialmente na feature `order-saga-flow`.
+**Status:** aberto.
 
-O `order-api` já possui:
+A Saga básica do pedido já possui histórico de transições e validação de estados, mas ainda não implementa compensações completas.
 
-- histórico de transições de status;
-- validação centralizada de transições;
-- endpoint para consultar histórico do pedido;
-- fluxo `WAITING_STOCK -> WAITING_FRAUD -> CONFIRMED/REJECTED`.
+Evoluções futuras:
 
-Estados atuais:
+- devolver estoque quando pedido for cancelado após reserva;
+- expirar pedidos presos em `WAITING_STOCK` ou `WAITING_FRAUD`;
+- criar timeout por etapa;
+- criar `correlationId` em todos os eventos;
+- criar tabela explícita de instância da Saga;
+- adicionar dead letter queues;
+- implementar retry controlado por etapa;
+- criar endpoint para visualizar Sagas em andamento.
 
-```text
-CREATED
-WAITING_STOCK
-WAITING_FRAUD
-CONFIRMED
-CANCELED
-REJECTED
-```
-
-O que ainda falta:
-
-- tabela explícita de instância da Saga;
-- compensações;
-- timeout por etapa;
-- correlação entre eventos;
-- política de retry por etapa;
-- dead letter queues;
-- painel para visualizar Sagas em andamento.
-
-Branch concluída parcialmente:
-
-```text
-feature/order-saga-flow
-```
-
-Evolução futura:
+Branch planejada:
 
 ```text
 feature/order-saga-compensation
@@ -271,40 +143,7 @@ feature/order-saga-compensation
 
 ---
 
-## TD-007: Reserva e baixa de estoque
-
-**Status:** concluído inicialmente na feature `product-stock-events`.
-
-O `product-api` passou a consumir eventos de reserva de estoque e publicar resultado:
-
-```text
-product.stock.reserve
-  ↓
-product-api
-  ↓
-stock.reserved ou stock.rejected
-```
-
-O `order-api` passou a aguardar estoque antes de enviar o pedido para análise de fraude.
-
-Evoluções futuras:
-
-- idempotência por pedido e produto;
-- tabela de reservas;
-- compensação de estoque;
-- controle de concorrência;
-- auditoria de estoque;
-- endpoint para visualizar reservas.
-
-Branch concluída:
-
-```text
-feature/product-stock-events
-```
-
----
-
-## TD-008: Integração com user-api ainda é simplificada
+## TD-005: Integração do order-api com user-api
 
 **Status:** aberto.
 
@@ -315,7 +154,8 @@ Correção futura:
 - criar REST Client para o `user-api`;
 - validar usuário antes de criar pedido;
 - tratar usuário inexistente;
-- futuramente propagar autenticação JWT entre serviços.
+- futuramente propagar autenticação JWT entre serviços;
+- avaliar fallback ou indisponibilidade do `user-api`.
 
 Serviços impactados:
 
@@ -330,7 +170,7 @@ feature/order-user-validation
 
 ---
 
-## TD-009: Segurança entre microsserviços ainda não implementada
+## TD-006: Segurança entre microsserviços
 
 **Status:** aberto.
 
@@ -344,7 +184,8 @@ Possíveis abordagens:
 - client credentials;
 - API keys internas;
 - mTLS em Kubernetes;
-- service mesh futuramente.
+- service mesh futuramente;
+- autenticação e autorização no KrakenD.
 
 Serviços impactados:
 
@@ -358,48 +199,11 @@ feature/service-to-service-security
 
 ---
 
-## TD-010: Observabilidade
-
-**Status:** concluído inicialmente na feature `observability`.
-
-A stack local de observabilidade foi adicionada com:
-
-- OpenTelemetry Collector;
-- Tempo;
-- Prometheus;
-- Grafana;
-- instrumentação dos serviços Quarkus com OpenTelemetry;
-- métricas via Micrometer/Prometheus.
-
-Evoluções futuras:
-
-- dashboards customizados por serviço;
-- métricas de negócio;
-- logs centralizados com Loki;
-- correlation ID nos logs;
-- trace de eventos RabbitMQ com melhor correlação;
-- alertas no Prometheus/Grafana;
-- documentação de troubleshooting.
-
-Branch concluída inicialmente:
-
-```text
-feature/observability
-```
-
-Evolução futura:
-
-```text
-feature/observability-dashboards
-```
-
----
-
-## TD-011: Tratamento global de erros ainda precisa ser padronizado
+## TD-007: Padronizar tratamento global de erros
 
 **Status:** aberto.
 
-Os serviços já lançam exceções como `BadRequestException`, `NotFoundException` e `WebApplicationException`, mas ainda não há um modelo global padronizado de erro.
+Os serviços já lançam exceções como `BadRequestException`, `NotFoundException`, `ServiceUnavailableException` e `WebApplicationException`, mas ainda não há um modelo global padronizado de erro.
 
 Correção futura:
 
@@ -407,7 +211,8 @@ Correção futura:
 - criar `ExceptionMapper`;
 - padronizar mensagens;
 - incluir timestamp, path, status e código de erro;
-- evitar respostas inconsistentes entre serviços.
+- evitar respostas inconsistentes entre serviços;
+- melhorar comportamento do KrakenD diante de erros dos backends.
 
 Exemplo de resposta futura:
 
@@ -429,7 +234,7 @@ feature/error-handling-standardization
 
 ---
 
-## TD-012: Testes automatizados ainda precisam ser criados
+## TD-008: Criar testes automatizados
 
 **Status:** aberto.
 
@@ -440,13 +245,15 @@ Será necessário criar testes automatizados.
 Tipos de teste previstos:
 
 - testes unitários dos services;
-- testes de resource;
-- testes de repository;
+- testes de resources;
+- testes de repositories;
 - testes com banco usando Testcontainers ou Dev Services;
 - testes de integração com RabbitMQ;
 - testes de fluxo completo;
 - testes do KrakenD;
-- testes de Outbox.
+- testes de Outbox;
+- testes de idempotência de estoque;
+- testes de resiliência REST.
 
 Serviços impactados:
 
@@ -460,7 +267,400 @@ feature/automated-tests
 
 ---
 
-## TD-013: Evoluir delivery-estimator-api com dados da Olist
+## TD-009: Migrar todos os serviços para Flyway ou Liquibase
+
+**Status:** aberto.
+
+O `order-api` já usa Flyway para controlar o schema `orders`, mas os demais serviços ainda dependem de criação automática ou scripts manuais.
+
+Ainda falta migrar:
+
+- product-api;
+- delivery-estimator-api;
+- fraud-detector-api;
+- user-api.
+
+Objetivos:
+
+- remover dependência de `quarkus.hibernate-orm.database.generation=update`;
+- versionar schemas por serviço;
+- padronizar migrations;
+- facilitar execução em CI/CD;
+- reduzir risco de inconsistência em ambientes.
+
+Branch planejada:
+
+```text
+feature/database-migrations-all-services
+```
+
+---
+
+## TD-010: Melhorar resiliência nas chamadas REST
+
+**Status:** em andamento.
+
+O `order-api` chama o `product-api` e o `delivery-estimator-api` via REST.
+
+A feature em andamento adiciona:
+
+- timeout;
+- retry;
+- circuit breaker;
+- fallback controlado.
+
+Decisão de comportamento:
+
+- se o `product-api` estiver indisponível, o pedido não deve ser criado;
+- se o `delivery-estimator-api` estiver indisponível, o pedido pode ser criado com estimativa fallback.
+
+Evoluções futuras:
+
+- configurar valores por ambiente;
+- adicionar métricas de circuit breaker;
+- adicionar testes automatizados;
+- padronizar logs de fallback;
+- expor falhas no Grafana.
+
+Branch em andamento:
+
+```text
+feature/rest-client-resilience
+```
+
+---
+
+## TD-011: Criar seed de dados para desenvolvimento
+
+**Status:** aberto.
+
+Hoje os dados de produtos, rotas de entrega e pedidos são criados manualmente com `curl`.
+
+Futuramente, criar scripts de seed.
+
+Exemplos:
+
+- produtos iniciais;
+- rotas SP -> SE;
+- rotas SP -> RJ;
+- rotas SP -> BA;
+- usuário de teste;
+- pedidos de exemplo;
+- dados para fraude;
+- dados para estoque.
+
+Branch planejada:
+
+```text
+feature/dev-seed-data
+```
+
+---
+
+## TD-012: Criar coleções de teste HTTP
+
+**Status:** aberto.
+
+Atualmente os testes manuais são feitos com comandos `curl`.
+
+Para facilitar aulas, validações e demonstrações, criar coleções HTTP.
+
+Opções:
+
+- arquivo `.http` para IntelliJ;
+- coleção Postman;
+- coleção Insomnia;
+- Bruno.
+
+Branch planejada:
+
+```text
+feature/http-client-collections
+```
+
+---
+
+## TD-013: Melhorar versionamento dos contratos REST e eventos
+
+**Status:** aberto.
+
+Os contratos REST e eventos RabbitMQ ainda estão implícitos no código.
+
+No futuro, será necessário documentar e versionar os contratos.
+
+Itens previstos:
+
+- OpenAPI por serviço;
+- AsyncAPI para eventos RabbitMQ;
+- versionamento de payloads;
+- documentação de routing keys;
+- documentação de exchanges e filas;
+- convenção para eventos `.v1`, `.v2` etc.
+
+Exemplos:
+
+```text
+REST:
+GET /products/{id}
+POST /orders
+
+Eventos:
+order.created.v1
+order.canceled.v1
+stock.reserved.v1
+fraud.approved.v1
+```
+
+Branch planejada:
+
+```text
+feature/api-event-contracts
+```
+
+---
+
+## TD-014: Criar documentação arquitetural do monorepo
+
+**Status:** aberto.
+
+O projeto ainda precisa de documentação arquitetural consolidada.
+
+Itens previstos:
+
+- visão geral da arquitetura;
+- diagrama C4 Context;
+- diagrama C4 Container;
+- diagrama de sequência da criação de pedido;
+- diagrama de eventos RabbitMQ;
+- diagrama da Saga;
+- diagrama da Outbox;
+- decisões arquiteturais;
+- registro de ADRs.
+
+Branch planejada:
+
+```text
+feature/architecture-docs
+```
+
+---
+
+## TD-015: Criar ADRs para decisões arquiteturais
+
+**Status:** aberto.
+
+As decisões principais ainda estão documentadas de forma informal.
+
+Criar ADRs para registrar decisões como:
+
+- uso de monorepo;
+- uso de Quarkus;
+- uso de PostgreSQL único com schema por serviço;
+- uso de RabbitMQ;
+- uso de KrakenD;
+- uso de OpenTelemetry;
+- uso de Saga;
+- uso de Transactional Outbox;
+- uso futuro de Kubernetes;
+- uso futuro de LangChain4j no BFF;
+- uso futuro de Tribuo no `delivery-estimator-api`.
+
+Branch planejada:
+
+```text
+feature/architecture-decision-records
+```
+
+---
+
+## TD-016: Melhorar observabilidade de negócio
+
+**Status:** aberto.
+
+A stack técnica de observabilidade já existe, mas ainda faltam métricas de negócio.
+
+Métricas possíveis:
+
+- pedidos criados por minuto;
+- pedidos confirmados;
+- pedidos rejeitados por estoque;
+- pedidos rejeitados por fraude;
+- tempo médio de confirmação;
+- eventos pendentes na outbox;
+- tentativas de publicação da outbox;
+- reservas de estoque por produto;
+- quantidade de fallback de entrega;
+- quantidade de falhas em chamadas REST.
+
+Branch planejada:
+
+```text
+feature/business-metrics
+```
+
+---
+
+## TD-017: Criar dashboards customizados no Grafana
+
+**Status:** aberto.
+
+A stack Grafana/Prometheus/Tempo já está funcionando, mas ainda não existem dashboards customizados do domínio.
+
+Dashboards sugeridos:
+
+- visão geral dos serviços;
+- pedidos por status;
+- erros por serviço;
+- latência por endpoint;
+- eventos RabbitMQ por tipo;
+- outbox pendente/publicada/falhada;
+- estoque reservado/rejeitado;
+- chamadas com fallback.
+
+Branch planejada:
+
+```text
+feature/observability-dashboards
+```
+
+---
+
+## TD-018: Logs centralizados com Loki
+
+**Status:** aberto.
+
+A observabilidade atual cobre métricas e traces, mas ainda não inclui logs centralizados.
+
+Evolução futura:
+
+- adicionar Loki;
+- adicionar Promtail ou OpenTelemetry Logs;
+- padronizar logs JSON;
+- incluir `traceId`, `spanId` e `correlationId`;
+- integrar logs com traces no Grafana.
+
+Branch planejada:
+
+```text
+feature/logs-centralized-loki
+```
+
+---
+
+## TD-019: Implementar Outbox no fraud-detector-api
+
+**Status:** aberto.
+
+O `fraud-detector-api` consome `order.created`, salva a análise de fraude e publica `fraud.approved` ou `fraud.rejected` diretamente no RabbitMQ.
+
+Para maior confiabilidade, a publicação do resultado da fraude também deve usar Transactional Outbox.
+
+Branch planejada:
+
+```text
+feature/fraud-outbox-pattern
+```
+
+---
+
+## TD-020: Implementar Outbox nos demais serviços publicadores
+
+**Status:** aberto.
+
+O padrão Transactional Outbox foi implementado inicialmente apenas no `order-api`.
+
+Ainda falta avaliar o uso do mesmo padrão nos serviços que também publicam eventos:
+
+- product-api;
+- fraud-detector-api.
+
+Observação: o item específico do `fraud-detector-api` pode ser implementado primeiro e depois a estratégia ser reaproveitada no `product-api`.
+
+Branch planejada:
+
+```text
+feature/outbox-other-services
+```
+
+---
+
+## TD-021: Criar notification-api
+
+**Status:** aberto.
+
+Ainda não existe serviço de notificação.
+
+Após a publicação de eventos, pode ser criado um consumidor para enviar notificações ou apenas registrar mensagens.
+
+Eventos de interesse:
+
+- order.created;
+- order.canceled;
+- fraud.rejected;
+- order.confirmed;
+- stock.rejected.
+
+Branch planejada:
+
+```text
+feature/notification-api
+```
+
+---
+
+## TD-022: Padronizar nomes dos serviços e bounded contexts
+
+**Status:** aberto.
+
+O projeto evoluiu ao longo das features e alguns nomes/conceitos podem precisar de revisão para alinhamento com bounded contexts.
+
+Sugestão de padronização:
+
+```text
+user-api
+product-api
+order-api
+delivery-estimator-api
+fraud-detector-api
+notification-api
+api-gateway
+ai-chat-bff
+```
+
+Branch planejada:
+
+```text
+feature/service-naming-cleanup
+```
+
+---
+
+## TD-023: Evoluir KrakenD
+
+**Status:** aberto.
+
+O KrakenD já está funcionando como API Gateway inicial, mas ainda pode evoluir.
+
+Evoluções futuras:
+
+- autenticação JWT;
+- rate limit;
+- logs de acesso;
+- headers de correlação;
+- políticas de timeout;
+- agregação de respostas;
+- documentação das rotas públicas;
+- separação de rotas públicas e administrativas.
+
+Branch planejada:
+
+```text
+feature/krakend-hardening
+```
+
+---
+
+## TD-024: Evoluir delivery-estimator-api com dados da Olist
 
 **Status:** aberto.
 
@@ -485,7 +685,7 @@ feature/olist-delivery-baseline
 
 ---
 
-## TD-014: Criar pipeline de dados para estimativa de entrega
+## TD-025: Criar pipeline de dados para estimativa de entrega
 
 **Status:** aberto.
 
@@ -519,421 +719,7 @@ feature/delivery-data-pipeline
 
 ---
 
-## TD-015: Criar API Gateway com KrakenD
-
-**Status:** concluído inicialmente na feature `api-gateway-krakend`.
-
-O KrakenD foi adicionado como API Gateway do sistema, expondo uma porta única para acesso às APIs principais.
-
-Porta local:
-
-```text
-http://localhost:8099
-```
-
-Responsabilidades atuais:
-
-- expor rotas `/api/products`;
-- expor rotas `/api/orders`;
-- expor rotas `/api/delivery-estimates`;
-- expor consultas de fraude;
-- esconder portas internas dos serviços.
-
-Evoluções futuras:
-
-- autenticação JWT;
-- rate limit;
-- logs de acesso;
-- headers de correlação;
-- políticas de timeout;
-- agregação de respostas;
-- documentação das rotas públicas.
-
-Branch concluída inicialmente:
-
-```text
-feature/api-gateway-krakend
-```
-
----
-
-## TD-016: Melhorar versionamento dos contratos de API e eventos
-
-**Status:** aberto.
-
-Os contratos REST e eventos RabbitMQ ainda estão implícitos no código.
-
-No futuro, será necessário documentar e versionar os contratos.
-
-Itens previstos:
-
-- OpenAPI por serviço;
-- AsyncAPI para eventos RabbitMQ;
-- versionamento de payloads;
-- documentação de routing keys;
-- documentação de exchanges e filas.
-
-Exemplos:
-
-```text
-REST:
-GET /products/{id}
-POST /orders
-
-Eventos:
-order.created.v1
-order.canceled.v1
-stock.reserved.v1
-fraud.approved.v1
-```
-
-Branch planejada:
-
-```text
-feature/api-event-contracts
-```
-
----
-
-## TD-017: Melhorar resiliência nas chamadas REST
-
-**Status:** aberto.
-
-O `order-api` chama o `product-api` e o `delivery-estimator-api` via REST, mas ainda sem políticas explícitas de resiliência.
-
-No futuro, aplicar:
-
-- timeout;
-- retry controlado;
-- circuit breaker;
-- fallback;
-- bulkhead se necessário.
-
-Serviços impactados:
-
-- order-api;
-- futuras integrações síncronas.
-
-Branch planejada:
-
-```text
-feature/rest-client-resilience
-```
-
----
-
-## TD-018: Padronizar nomes dos serviços e bounded contexts
-
-**Status:** aberto.
-
-O projeto evoluiu ao longo das features e alguns nomes/conceitos podem precisar de revisão para alinhamento com bounded contexts.
-
-Sugestão de padronização:
-
-```text
-user-api
-product-api
-order-api
-delivery-estimator-api
-fraud-detector-api
-notification-api
-api-gateway
-ai-chat-bff
-```
-
-Branch planejada:
-
-```text
-feature/service-naming-cleanup
-```
-
----
-
-## TD-019: Criar documentação arquitetural do monorepo
-
-**Status:** aberto.
-
-O projeto ainda precisa de documentação arquitetural consolidada.
-
-Itens previstos:
-
-- visão geral da arquitetura;
-- diagrama C4 Context;
-- diagrama C4 Container;
-- diagrama de sequência da criação de pedido;
-- diagrama de eventos RabbitMQ;
-- diagrama da Saga;
-- diagrama da Outbox;
-- decisões arquiteturais;
-- registro de ADRs.
-
-Branch planejada:
-
-```text
-feature/architecture-docs
-```
-
----
-
-## TD-020: Criar ADRs para decisões arquiteturais
-
-**Status:** aberto.
-
-As decisões principais ainda estão documentadas de forma informal.
-
-Criar ADRs para registrar decisões como:
-
-- uso de monorepo;
-- uso de Quarkus;
-- uso de PostgreSQL único com schema por serviço;
-- uso de RabbitMQ;
-- uso de KrakenD;
-- uso de OpenTelemetry;
-- uso de Saga;
-- uso de Transactional Outbox;
-- uso futuro de Kubernetes;
-- uso futuro de LangChain4j no BFF.
-
-Branch planejada:
-
-```text
-feature/architecture-decision-records
-```
-
----
-
-## TD-021: Melhorar o modelo de banco e migrações
-
-**Status:** concluído parcialmente na feature `database-migrations`.
-
-O `order-api` passou a usar Flyway para controlar o schema `orders`.
-
-Motivação:
-
-- o uso de `quarkus.hibernate-orm.database.generation=update` gerou problemas na evolução do enum `OrderStatus`;
-- constraints do banco precisaram ser ajustadas manualmente;
-- produção exige evolução controlada de schema.
-
-Ainda falta migrar para Flyway/Liquibase nos demais serviços:
-
-- product-api;
-- delivery-estimator-api;
-- fraud-detector-api;
-- user-api.
-
-Branch concluída parcialmente:
-
-```text
-feature/database-migrations
-```
-
-Evolução futura:
-
-```text
-feature/database-migrations-all-services
-```
-
----
-
-## TD-022: Criar seed de dados para desenvolvimento
-
-**Status:** aberto.
-
-Hoje os dados de produtos, rotas de entrega e pedidos são criados manualmente com `curl`.
-
-Futuramente, criar scripts de seed.
-
-Exemplos:
-
-- produtos iniciais;
-- rotas SP -> SE;
-- rotas SP -> RJ;
-- rotas SP -> BA;
-- usuário de teste;
-- pedidos de exemplo;
-- dados para fraude;
-- dados para estoque.
-
-Branch planejada:
-
-```text
-feature/dev-seed-data
-```
-
----
-
-## TD-023: Criar coleções de teste HTTP
-
-**Status:** aberto.
-
-Atualmente os testes manuais são feitos com comandos `curl`.
-
-Para facilitar aulas e validações, criar coleções HTTP.
-
-Opções:
-
-- arquivo `.http` para IntelliJ;
-- coleção Postman;
-- coleção Insomnia;
-- Bruno.
-
-Branch planejada:
-
-```text
-feature/http-client-collections
-```
-
----
-
-## TD-024: Implementar serviço de análise de fraude
-
-**Status:** concluído inicialmente na feature `fraud-detector-api`.
-
-O `fraud-detector-api` já:
-
-- consome `order.created`;
-- simula regra de fraude;
-- salva análise no schema `fraud`;
-- publica `fraud.approved` ou `fraud.rejected`.
-
-Evoluções futuras:
-
-- melhorar regras de fraude;
-- adicionar modelo de score;
-- usar histórico do cliente;
-- implementar Outbox;
-- implementar idempotência;
-- melhorar explicabilidade da decisão.
-
-Branch concluída:
-
-```text
-feature/fraud-detector-api
-```
-
----
-
-## TD-025: Implementar notification-api
-
-**Status:** aberto.
-
-Ainda não existe serviço de notificação.
-
-Após a publicação de eventos, pode ser criado um consumidor para enviar notificações ou apenas registrar mensagens.
-
-Eventos de interesse:
-
-- order.created;
-- order.canceled;
-- fraud.rejected;
-- order.confirmed;
-- stock.rejected.
-
-Branch planejada:
-
-```text
-feature/notification-api
-```
-
----
-
-## TD-026: Implementar Outbox também no fraud-detector-api
-
-**Status:** aberto.
-
-O `fraud-detector-api` consome `order.created`, salva a análise de fraude e publica `fraud.approved` ou `fraud.rejected` diretamente no RabbitMQ.
-
-Para maior confiabilidade, a publicação do resultado da fraude também deve usar Transactional Outbox.
-
-Branch planejada:
-
-```text
-feature/fraud-outbox-pattern
-```
-
----
-
-## TD-027: Implementar controle idempotente de reserva de estoque
-
-**Status:** próxima feature.
-
-O `product-api` realiza a reserva de estoque ao consumir `product.stock.reserve`, mas ainda não possui controle idempotente por pedido e produto.
-
-Se uma mensagem for reprocessada, o estoque pode ser baixado mais de uma vez.
-
-Evoluções previstas:
-
-- criar tabela `products.stock_reservations`;
-- registrar `orderId`, `productId` e quantidade reservada;
-- impedir reserva duplicada;
-- retornar sucesso idempotente se a reserva já tiver ocorrido;
-- permitir compensação futura de estoque;
-- publicar eventos com correlationId.
-
-Branch planejada:
-
-```text
-feature/stock-reservation-idempotency
-```
-
----
-
-## TD-028: Evoluir Saga para suporte a compensações
-
-**Status:** aberto.
-
-A feature `order-saga-flow` adicionou histórico de transições e validação de estados, mas ainda não implementa compensações completas.
-
-Evoluções futuras:
-
-- devolver estoque quando pedido for cancelado após reserva;
-- expirar pedidos presos em `WAITING_STOCK` ou `WAITING_FRAUD`;
-- criar timeout por etapa;
-- criar correlationId em todos os eventos;
-- criar tabela explícita de instância da Saga;
-- adicionar dead letter queues;
-- implementar retry controlado por etapa.
-
-Branch planejada:
-
-```text
-feature/order-saga-compensation
-```
-
----
-
-## TD-029: BFF Conversacional com LangChain4j
-
-**Status:** planejado.
-
-Criar um serviço `ai-chat-bff` em Quarkus usando LangChain4j para permitir interação conversacional com o ecommerce.
-
-O serviço atuará como um BFF inteligente, expondo um endpoint de chat e utilizando ferramentas internas para:
-
-- consultar produtos;
-- consultar preços;
-- estimar entrega;
-- criar pedidos;
-- consultar status;
-- cancelar pedidos quando permitido.
-
-Branch planejada:
-
-```text
-feature/ai-chat-bff-langchain4j
-```
-
-Fora do escopo inicial:
-
-- pagamento;
-- atendimento humano;
-- integração com WhatsApp;
-- fine-tuning;
-- recomendação avançada.
-
----
-
-## TD-030: Refatorar delivery-estimator-api para usar Tribuo
+## TD-026: Refatorar delivery-estimator-api para usar Tribuo
 
 **Status:** planejado.
 
@@ -968,87 +754,109 @@ Fora do escopo inicial:
 
 ---
 
-## TD-031: Implementar Outbox nos demais serviços
+## TD-027: Criar BFF Conversacional com LangChain4j
 
-**Status:** aberto.
+**Status:** planejado.
 
-O padrão Transactional Outbox foi implementado inicialmente apenas no `order-api`.
+Criar um serviço `ai-chat-bff` em Quarkus usando LangChain4j para permitir interação conversacional com o ecommerce.
 
-Ainda falta avaliar o uso do mesmo padrão nos serviços que também publicam eventos:
+O serviço atuará como um BFF inteligente, expondo um endpoint de chat e utilizando ferramentas internas para:
 
-- product-api;
-- fraud-detector-api.
-
-Branch planejada:
-
-```text
-feature/outbox-other-services
-```
-
----
-
-## TD-032: Melhorar observabilidade de negócio
-
-**Status:** aberto.
-
-A stack técnica de observabilidade já existe, mas ainda faltam métricas de negócio.
-
-Métricas possíveis:
-
-- pedidos criados por minuto;
-- pedidos confirmados;
-- pedidos rejeitados por estoque;
-- pedidos rejeitados por fraude;
-- tempo médio de confirmação;
-- eventos pendentes na outbox;
-- tentativas de publicação da outbox;
-- reservas de estoque por produto.
+- consultar produtos;
+- consultar preços;
+- estimar entrega;
+- criar pedidos;
+- consultar status;
+- cancelar pedidos quando permitido.
 
 Branch planejada:
 
 ```text
-feature/business-metrics
+feature/ai-chat-bff-langchain4j
+```
+
+Fora do escopo inicial:
+
+- pagamento;
+- atendimento humano;
+- integração com WhatsApp;
+- fine-tuning;
+- recomendação avançada.
+
+---
+
+## TD-028: Compensação de estoque
+
+**Status:** aberto.
+
+A reserva de estoque já possui idempotência inicial, mas ainda não há compensação para devolver estoque em cenários de cancelamento ou rejeição posterior.
+
+Cenários:
+
+- pedido cancelado após estoque reservado;
+- fraude rejeitada após estoque reservado;
+- timeout na etapa de fraude;
+- compensação manual administrativa.
+
+Itens previstos:
+
+- criar evento `stock.release.requested`;
+- product-api consumir solicitação de devolução;
+- atualizar tabela `stock_reservations`;
+- devolver quantidade ao estoque;
+- publicar `stock.released` ou `stock.release.rejected`.
+
+Branch planejada:
+
+```text
+feature/stock-compensation
 ```
 
 ---
 
-## Priorização sugerida
+# Priorização sugerida
 
 Próximas features recomendadas:
 
-1. `feature/stock-reservation-idempotency`
-2. `feature/rest-client-resilience`
-3. `feature/error-handling-standardization`
-4. `feature/automated-tests`
-5. `feature/database-migrations-all-services`
-6. `feature/fraud-outbox-pattern`
-7. `feature/delivery-estimator-tribuo`
-8. `feature/architecture-docs`
-9. `feature/kubernetes-deployment`
-10. `feature/ai-chat-bff-langchain4j`
+1. `feature/rest-client-resilience`
+2. `feature/error-handling-standardization`
+3. `feature/automated-tests`
+4. `feature/database-migrations-all-services`
+5. `feature/fraud-outbox-pattern`
+6. `feature/stock-compensation`
+7. `feature/business-metrics`
+8. `feature/observability-dashboards`
+9. `feature/delivery-estimator-tribuo`
+10. `feature/architecture-docs`
+11. `feature/kubernetes-deployment`
+12. `feature/ai-chat-bff-langchain4j`
 
 ---
 
-## Roadmap resumido
+# Roadmap resumido
 
 ```text
 Confiabilidade:
-  - stock-reservation-idempotency
+  - rest-client-resilience
   - fraud-outbox-pattern
   - outbox-other-services
   - event-idempotency
+  - stock-compensation
+  - order-saga-compensation
 
 Qualidade:
-  - automated-tests
   - error-handling-standardization
+  - automated-tests
   - api-event-contracts
   - architecture-docs
+  - architecture-decision-records
 
 Produção:
   - database-migrations-all-services
   - service-to-service-security
   - kubernetes-deployment
   - native-dockerfiles
+  - krakend-hardening
 
 IA / Dados:
   - olist-delivery-baseline
@@ -1057,7 +865,7 @@ IA / Dados:
   - ai-chat-bff-langchain4j
 
 Observabilidade:
-  - observability-dashboards
   - business-metrics
+  - observability-dashboards
   - logs-centralized-loki
 ```
