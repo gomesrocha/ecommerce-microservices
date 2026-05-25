@@ -56,11 +56,17 @@ services:
       JWT_ISSUER: user-api
       JWT_ACCESS_TOKEN_MINUTES: 30
       JWT_REFRESH_TOKEN_MINUTES: 10080
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: user-api
     ports:
       - "8094:8080"
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - ecommerce-net
 
@@ -82,6 +88,11 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
       RABBITMQ_VIRTUAL_HOST: /
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: product-api
+
     ports:
       - "8095:8080"
     depends_on:
@@ -89,6 +100,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - ecommerce-net
 
@@ -104,11 +117,17 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/ecommerce
       DB_USERNAME: ${POSTGRES_USER:-ecommerce}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: delivery-estimator-api
     ports:
       - "8097:8080"
     depends_on:
       postgres:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - ecommerce-net
 
@@ -125,6 +144,10 @@ services:
       DB_USERNAME: ${POSTGRES_USER:-ecommerce}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
 
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: fraud-detector-api
+
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_PORT: 5672
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
@@ -137,6 +160,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
     networks:
       - ecommerce-net
 
@@ -161,6 +186,10 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
       RABBITMQ_VIRTUAL_HOST: /
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: order-api
     ports:
       - "8096:8080"
     depends_on:
@@ -173,6 +202,8 @@ services:
       delivery-estimator-api:
         condition: service_started
       fraud-detector-api:
+        condition: service_started
+      otel-collector:
         condition: service_started
     networks:
       - ecommerce-net
@@ -197,9 +228,68 @@ services:
         condition: service_started
     networks:
       - ecommerce-net
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: ecommerce-otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./infra/observability/otel/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+    depends_on:
+      - tempo
+    networks:
+      - ecommerce-net
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: ecommerce-tempo
+    user: "0:0"
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./infra/observability/tempo/tempo.yml:/etc/tempo.yml:ro
+      - ecommerce_tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"
+    networks:
+      - ecommerce-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ecommerce-prometheus
+    volumes:
+      - ./infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ecommerce_prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - ecommerce-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ecommerce-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ecommerce_grafana_data:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - tempo
+    networks:
+      - ecommerce-net
 volumes:
   ecommerce_pgdata:
   ecommerce_rabbitmq_data:
+  ecommerce_tempo_data:
+  ecommerce_prometheus_data:
+  ecommerce_grafana_data:
 
 networks:
   ecommerce-net:
