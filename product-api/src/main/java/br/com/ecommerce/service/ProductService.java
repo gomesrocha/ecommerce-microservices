@@ -15,8 +15,16 @@ import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import br.com.ecommerce.event.StockReservationItem;
+import br.com.ecommerce.domain.StockReservation;
+import br.com.ecommerce.domain.StockReservationStatus;
+import br.com.ecommerce.event.StockReservationItem;
+import br.com.ecommerce.repository.StockReservationRepository;
+import jakarta.transaction.Transactional;
+import jakarta.ws.rs.BadRequestException;
 
 import java.util.List;
+import java.util.Optional;
+
 import java.util.Map;
 
 @ApplicationScoped
@@ -25,14 +33,17 @@ public class ProductService {
     @Inject
     ProductRepository productRepository;
 
+    @Inject
+    StockReservationRepository stockReservationRepository;
+
     @Transactional
     public ProductResponse create(CreateProductRequest request) {
         String normalizedSku = normalizeSku(request.sku());
 
         if (productRepository.existsBySku(normalizedSku)) {
             throw new WebApplicationException(
-                "Já existe um produto cadastrado com o SKU informado",
-                Response.Status.CONFLICT
+                    "Já existe um produto cadastrado com o SKU informado",
+                    Response.Status.CONFLICT
             );
         }
 
@@ -52,18 +63,18 @@ public class ProductService {
 
     public List<ProductResponse> listAll() {
         return productRepository
-            .listAll(Sort.by("id").descending())
-            .stream()
-            .map(ProductResponse::fromEntity)
-            .toList();
+                .listAll(Sort.by("id").descending())
+                .stream()
+                .map(ProductResponse::fromEntity)
+                .toList();
     }
 
     public List<ProductResponse> listActive() {
         return productRepository
-            .listActive()
-            .stream()
-            .map(ProductResponse::fromEntity)
-            .toList();
+                .listActive()
+                .stream()
+                .map(ProductResponse::fromEntity)
+                .toList();
     }
 
     public ProductResponse findById(Long id) {
@@ -73,8 +84,8 @@ public class ProductService {
 
     public ProductResponse findBySku(String sku) {
         Product product = productRepository
-            .findBySku(normalizeSku(sku))
-            .orElseThrow(() -> new NotFoundException("Produto não encontrado para o SKU informado"));
+                .findBySku(normalizeSku(sku))
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado para o SKU informado"));
 
         return ProductResponse.fromEntity(product);
     }
@@ -87,14 +98,14 @@ public class ProductService {
             String normalizedSku = normalizeSku(request.sku());
 
             productRepository
-                .findBySku(normalizedSku)
-                .filter(existingProduct -> !existingProduct.id.equals(id))
-                .ifPresent(existingProduct -> {
-                    throw new WebApplicationException(
-                        "Já existe outro produto cadastrado com o SKU informado",
-                        Response.Status.CONFLICT
-                    );
-                });
+                    .findBySku(normalizedSku)
+                    .filter(existingProduct -> !existingProduct.id.equals(id))
+                    .ifPresent(existingProduct -> {
+                        throw new WebApplicationException(
+                                "Já existe outro produto cadastrado com o SKU informado",
+                                Response.Status.CONFLICT
+                        );
+                    });
 
             product.sku = normalizedSku;
         }
@@ -140,12 +151,12 @@ public class ProductService {
         boolean available = product.isActive() && product.hasStock(quantity);
 
         return Map.of(
-            "productId", product.id,
-            "sku", product.sku,
-            "requestedQuantity", quantity,
-            "availableStock", product.stockQuantity,
-            "active", product.isActive(),
-            "available", available
+                "productId", product.id,
+                "sku", product.sku,
+                "requestedQuantity", quantity,
+                "availableStock", product.stockQuantity,
+                "active", product.isActive(),
+                "available", available
         );
     }
 
@@ -155,8 +166,8 @@ public class ProductService {
         }
 
         return productRepository
-            .findByIdOptional(id)
-            .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
+                .findByIdOptional(id)
+                .orElseThrow(() -> new NotFoundException("Produto não encontrado"));
     }
 
     private String normalizeSku(String sku) {
@@ -182,29 +193,120 @@ public class ProductService {
 
         return value.trim();
     }
+
     @Transactional
-    public String reserveStock(List<StockReservationItem> items) {
+    public StockReservationResult reserveStock(Long orderId, List<StockReservationItem> items) {
+        if (orderId == null) {
+            throw new BadRequestException("Pedido inválido para reserva de estoque");
+        }
+
         if (items == null || items.isEmpty()) {
             throw new BadRequestException("Solicitação de reserva de estoque sem itens");
         }
 
+        boolean allAlreadyReserved = true;
+
+        for (StockReservationItem item : items) {
+            Optional<StockReservation> existingReservation =
+                    stockReservationRepository.findByOrderIdAndProductId(orderId, item.productId());
+
+            if (existingReservation.isEmpty()) {
+                allAlreadyReserved = false;
+                continue;
+            }
+
+            StockReservation reservation = existingReservation.get();
+
+            if (StockReservationStatus.REJECTED.equals(reservation.status)) {
+                return StockReservationResult.rejected(reservation.reason);
+            }
+
+            if (!reservation.quantity.equals(item.quantity())) {
+                return StockReservationResult.rejected(
+                        "Reserva já existe para o pedido "
+                                + orderId
+                                + " e produto "
+                                + item.productId()
+                                + ", mas com quantidade diferente"
+                );
+            }
+        }
+
+        if (allAlreadyReserved) {
+            return StockReservationResult.reserved(
+                    "Estoque já reservado anteriormente para o pedido " + orderId
+            );
+        }
+
+        String rejectionReason = validateStockReservation(items);
+
+        if (rejectionReason != null) {
+            registerRejectedReservations(orderId, items, rejectionReason);
+            return StockReservationResult.rejected(rejectionReason);
+        }
+
+        for (StockReservationItem item : items) {
+            Optional<StockReservation> existingReservation =
+                    stockReservationRepository.findByOrderIdAndProductId(orderId, item.productId());
+
+            if (existingReservation.isPresent()) {
+                continue;
+            }
+
+            Product product = getProductOrThrow(item.productId());
+
+            product.stockQuantity = product.stockQuantity - item.quantity();
+
+            StockReservation reservation = new StockReservation();
+            reservation.orderId = orderId;
+            reservation.productId = item.productId();
+            reservation.quantity = item.quantity();
+            reservation.status = StockReservationStatus.RESERVED;
+            reservation.reason = "Estoque reservado com sucesso";
+
+            stockReservationRepository.persist(reservation);
+        }
+
+        return StockReservationResult.reserved("Estoque reservado com sucesso");
+    }
+
+    private String validateStockReservation(List<StockReservationItem> items) {
         for (StockReservationItem item : items) {
             Product product = getProductOrThrow(item.productId());
 
             if (!product.isActive()) {
-                throw new BadRequestException("Produto inativo: " + item.productId());
+                return "Produto inativo: " + item.productId();
             }
 
             if (!product.hasStock(item.quantity())) {
-                throw new BadRequestException("Estoque insuficiente para o produto " + item.productId());
+                return "Estoque insuficiente para o produto " + item.productId();
             }
         }
 
-        for (StockReservationItem item : items) {
-            Product product = getProductOrThrow(item.productId());
-            product.stockQuantity = product.stockQuantity - item.quantity();
-        }
+        return null;
+    }
 
-        return "Estoque reservado com sucesso";
+    private void registerRejectedReservations(
+            Long orderId,
+            List<StockReservationItem> items,
+            String reason
+    ) {
+        for (StockReservationItem item : items) {
+            Optional<StockReservation> existingReservation =
+                    stockReservationRepository.findByOrderIdAndProductId(orderId, item.productId());
+
+            if (existingReservation.isPresent()) {
+                continue;
+            }
+
+            StockReservation reservation = new StockReservation();
+            reservation.orderId = orderId;
+            reservation.productId = item.productId();
+            reservation.quantity = item.quantity();
+            reservation.status = StockReservationStatus.REJECTED;
+            reservation.reason = reason;
+
+            stockReservationRepository.persist(reservation);
+        }
     }
 }
