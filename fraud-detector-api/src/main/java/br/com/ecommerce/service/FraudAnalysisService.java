@@ -10,6 +10,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
+import br.com.ecommerce.metrics.FraudMetricsService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -25,6 +26,9 @@ public class FraudAnalysisService {
 
     @Inject
     FraudTribuoModelService fraudTribuoModelService;
+
+    @Inject
+    FraudMetricsService metricsService;
 
     @Transactional
     public FraudAnalysis analyze(OrderCreatedEvent event) {
@@ -62,6 +66,12 @@ public class FraudAnalysisService {
         analysis.reason = decision.reason();
 
         repository.persist(analysis);
+        metricsService.recordPrediction(
+                decision.status(),
+                decision.riskScore(),
+                decision.source(),
+                decision.modelVersion()
+        );
 
         return analysis;
     }
@@ -93,7 +103,13 @@ public class FraudAnalysisService {
                         + ". Score de risco: " + riskScore
                         + ". Valor total: " + event.payload().totalAmount();
 
-                return new FraudDecision(status, riskScore, reason);
+                return new FraudDecision(
+                        status,
+                        riskScore,
+                        reason,
+                        "TRIBUO_MODEL",
+                        prediction.modelVersion()
+                );
             }
         }
 
@@ -106,7 +122,9 @@ public class FraudAnalysisService {
         return new FraudDecision(
                 status,
                 riskScore,
-                buildReason(status, riskScore, event.payload().totalAmount())
+                buildReason(status, riskScore, event.payload().totalAmount()),
+                "RULE_FALLBACK",
+                "rules-v1"
         );
     }
 
@@ -242,7 +260,9 @@ public class FraudAnalysisService {
     private record FraudDecision(
             FraudStatus status,
             BigDecimal riskScore,
-            String reason
+            String reason,
+            String source,
+            String modelVersion
     ) {
     }
 }
