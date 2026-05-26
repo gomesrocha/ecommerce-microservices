@@ -3,14 +3,21 @@ services:
     image: postgres:16
     container_name: ecommerce-postgres
     environment:
-      POSTGRES_DB: ecommerce
-      POSTGRES_USER: ecommerce
-      POSTGRES_PASSWORD: ecommerce
+      POSTGRES_DB: ${POSTGRES_DB:-ecommerce}
+      POSTGRES_USER: ${POSTGRES_USER:-ecommerce}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
     ports:
       - "5432:5432"
     volumes:
       - ecommerce_pgdata:/var/lib/postgresql/data
-      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ecommerce} -d ${POSTGRES_DB:-ecommerce}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-net
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -19,8 +26,305 @@ services:
       - "5672:5672"
       - "15672:15672"
     environment:
-      RABBITMQ_DEFAULT_USER: ecommerce
-      RABBITMQ_DEFAULT_PASS: ecommerce
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+    volumes:
+      - ./infra/rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ./infra/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+      - ecommerce_rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ecommerce-net
 
+  user-api:
+    build:
+      context: ./user-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-user-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      JWT_ISSUER: user-api
+      JWT_ACCESS_TOKEN_MINUTES: 30
+      JWT_REFRESH_TOKEN_MINUTES: 10080
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: user-api
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - ecommerce-net
+
+  product-api:
+    build:
+      context: ./product-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-product-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+      RABBITMQ_VIRTUAL_HOST: /
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: product-api
+
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - ecommerce-net
+
+  delivery-estimator-api:
+    build:
+      context: ./delivery-estimator-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-delivery-estimator-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: delivery-estimator-api
+
+      APP_DELIVERY_ML_ENABLED: "true"
+      APP_DELIVERY_ML_PREFER_MODEL: "true"
+      APP_DELIVERY_ML_MODEL_PATH: "/models/delivery/delivery-tribuo-v1.model"
+    volumes:
+    - ./models/delivery:/models/delivery:ro
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - ecommerce-net
+
+  fraud-detector-api:
+    build:
+      context: ./fraud-detector-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-fraud-detector-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: fraud-detector-api
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+      RABBITMQ_VIRTUAL_HOST: /
+
+      APP_FRAUD_ML_ENABLED: "true"
+      APP_FRAUD_ML_MODEL_PATH: "/models/fraud/fraud-tribuo-v1.model"
+    volumes:
+    - ./models/fraud:/models/fraud:ro
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      otel-collector:
+        condition: service_started
+    networks:
+      - ecommerce-net
+
+  order-api:
+    build:
+      context: ./order-api
+      dockerfile: Dockerfile
+    container_name: ecommerce-order-api
+    environment:
+      PORT: 8080
+      QUARKUS_HTTP_HOST: 0.0.0.0
+
+      DB_URL: jdbc:postgresql://postgres:5432/ecommerce
+      DB_USERNAME: ${POSTGRES_USER:-ecommerce}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-ecommerce}
+
+      PRODUCT_API_URL: http://product-api:8080
+      DELIVERY_ESTIMATOR_API_URL: http://delivery-estimator-api:8080
+
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
+      RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
+      RABBITMQ_VIRTUAL_HOST: /
+
+      OTEL_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_SERVICE_NAME: order-api
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      product-api:
+        condition: service_started
+      delivery-estimator-api:
+        condition: service_started
+      fraud-detector-api:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    networks:
+      - ecommerce-net
+  ai-chat-bff:
+    build:
+      context: ./ai-chat-bff
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: ecommerce-ai-chat-bff
+    depends_on:
+      - product-api
+      - order-api
+      - delivery-estimator-api
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
+    environment:
+      PRODUCT_API_URL: http://product-api:8080
+      ORDER_API_URL: http://order-api:8080
+      DELIVERY_ESTIMATOR_API_URL: http://delivery-estimator-api:8080
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
+      OLLAMA_CHAT_MODEL: llama3.2:latest
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    ports:
+      - "8100:8080"
+    networks:
+    - ecommerce-net
+  api-gateway:
+    image: krakend:2.13
+    container_name: ecommerce-api-gateway
+    command: ["run", "-c", "/etc/krakend/krakend.json"]
+    ports:
+      - "8099:8080"
+    volumes:
+      - ./gateway/krakend.json:/etc/krakend/krakend.json:ro
+    depends_on:
+      user-api:
+        condition: service_started
+      product-api:
+        condition: service_started
+      order-api:
+        condition: service_started
+      delivery-estimator-api:
+        condition: service_started
+      fraud-detector-api:
+        condition: service_started
+    networks:
+      - ecommerce-net
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    container_name: ecommerce-otel-collector
+    command: ["--config=/etc/otel-collector-config.yml"]
+    volumes:
+      - ./infra/observability/otel/otel-collector-config.yml:/etc/otel-collector-config.yml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "8888:8888"
+    depends_on:
+      - tempo
+    networks:
+      - ecommerce-net
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: ecommerce-tempo
+    user: "0:0"
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./infra/observability/tempo/tempo.yml:/etc/tempo.yml:ro
+      - ecommerce_tempo_data:/tmp/tempo
+    ports:
+      - "3200:3200"
+    networks:
+      - ecommerce-net
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ecommerce-prometheus
+    volumes:
+      - ./infra/observability/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ecommerce_prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - ecommerce-net
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ecommerce-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+    volumes:
+      - ecommerce_grafana_data:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - tempo
+    networks:
+      - ecommerce-net
 volumes:
   ecommerce_pgdata:
+  ecommerce_rabbitmq_data:
+  ecommerce_tempo_data:
+  ecommerce_prometheus_data:
+  ecommerce_grafana_data:
+  ecommerce_ollama_data:
+
+networks:
+  ecommerce-net:
+    driver: bridge

@@ -1,0 +1,112 @@
+### ============================================================
+### 03-delivery-estimates.http
+### Testes de Delivery Estimator API via API Gateway
+###
+### Pré-requisito:
+### - Executar 00-auth.http antes para salvar access_token
+### ============================================================
+
+@gateway = http://localhost:8099
+
+
+### ------------------------------------------------------------
+### 1. Criar/atualizar rota SP -> SE
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+PUT {{gateway}}/api/delivery-estimates/routes
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "SE",
+  "minDays": 5,
+  "estimatedDays": 8,
+  "maxDays": 13,
+  "source": "MANUAL_BASELINE",
+  "modelVersion": "baseline-routes-v1"
+}
+
+
+### ------------------------------------------------------------
+### 2. Criar/atualizar rota SP -> RJ
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+PUT {{gateway}}/api/delivery-estimates/routes
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "RJ",
+  "minDays": 2,
+  "estimatedDays": 4,
+  "maxDays": 7,
+  "source": "MANUAL_BASELINE",
+  "modelVersion": "baseline-routes-v1"
+}
+
+
+### ------------------------------------------------------------
+### 3. Listar rotas
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/delivery-estimates/routes
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 4. Estimar entrega SP -> SE
+### Esperado:
+### - HTTP 200
+### - estimatedDays = 8
+### ------------------------------------------------------------
+POST {{gateway}}/api/delivery-estimates/estimate
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "SE"
+}
+
+
+### ------------------------------------------------------------
+### 5. Estimar entrega SP -> RJ
+### Esperado:
+### - HTTP 200
+### - estimatedDays = 4
+### ------------------------------------------------------------
+POST {{gateway}}/api/delivery-estimates/estimate
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "RJ"
+}
+
+### Estimar entrega usando baseline Olist
+### Esperado:
+### source = OLIST_BASELINE
+### #modelVersion = olist-baseline-v1
+POST {{gateway}}/api/delivery-estimates/estimate
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "SE",
+  "totalItems": 1
+}
+
+### Estimar entrega usando modelo Tribuo
+POST {{gateway}}/api/delivery-estimates/estimate
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "BA",
+  "destinationState": "AL",
+  "totalItems": 1
+}

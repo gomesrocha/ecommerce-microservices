@@ -2,26 +2,79 @@
 target/
 *.class
 
-# IDE
+# Maven
+.mvn/wrapper/maven-wrapper.jar
+
+# IDEs
 .idea/
 .vscode/
+*.iml
 
 # Env / secrets
 .env
+.env.*
+!.env.example
 *.pem
 *.key
+*.p12
+*.jks
 
 # Python
 .venv/
 __pycache__/
 *.pyc
+.pytest_cache/
 
-# Datasets / modelos
+# Datasets / modelos ML
 data/
 datasets/
 models/
 *.pkl
 *.joblib
+*.parquet
+*.csv
+
+# Logs
+logs/
+*.log
 
 # OS
 .DS_Store
+Thumbs.db
+
+# Olist raw/processed datasets
+data/olist/raw/*.csv
+data/olist/raw/*.zip
+data/olist/processed/*.csv
+
+# Não versionar dataset grande de treino
+delivery-estimator-api/src/main/resources/ml/olist_delivery_training.csv
+
+# Não versionar modelos gerados
+delivery-estimator-api/src/main/resources/ml/*.tribuo
+delivery-estimator-api/src/main/resources/ml/*.model
+
+
+# Versionar arquivos necessários para a aplicação
+!delivery-estimator-api/src/main/resources/ml/olist_delivery_route_baseline.csv
+!delivery-estimator-api/src/main/resources/ml/olist_delivery_training_tribuo.csv
+
+# Fraud Olist processed datasets
+data/fraud/olist/processed/*.csv
+
+# Fraud generated models
+fraud-detector-api/src/main/resources/ml/*.tribuo
+fraud-detector-api/src/main/resources/ml/*.model
+
+# Allow gitkeep
+!data/fraud/olist/processed/.gitkeep
+!fraud-detector-api/src/main/resources/ml/.gitkeep
+
+# Generated ML models
+models/**/*.model
+models/**/*.tribuo
+models/**/*.ser
+
+# Keep model folders
+!models/delivery/.gitkeep
+!models/fraud/.gitkeep
