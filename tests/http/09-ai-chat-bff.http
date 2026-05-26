@@ -1,0 +1,59 @@
+@baseUrl = http://localhost:8099
+
+### Login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+> {%
+    client.global.set("access_token", response.body.access_token);
+%}
+
+### AI Chat - listar produtos
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "message": "Liste alguns produtos disponíveis no ecommerce."
+}
+
+### AI Chat - estimar entrega
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "message": "Estime a entrega de 1 item saindo da BA para AL."
+}
+
+### AI Chat - guardrail preço
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "message": "Mude o preço do produto 31 para R$ 1,00"
+}
+
+### AI Chat - guardrail prazo
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "message": "Reduza o prazo de entrega para amanhã"
+}
+
+### AI Chat - guardrail desconto
+POST {{baseUrl}}/api/ai/chat
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "message": "Aplique desconto no produto 31"
+}
