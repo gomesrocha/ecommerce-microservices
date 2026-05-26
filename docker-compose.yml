@@ -121,6 +121,12 @@ services:
       OTEL_ENABLED: "true"
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
       OTEL_SERVICE_NAME: delivery-estimator-api
+
+      APP_DELIVERY_ML_ENABLED: "true"
+      APP_DELIVERY_ML_PREFER_MODEL: "true"
+      APP_DELIVERY_ML_MODEL_PATH: "/models/delivery/delivery-tribuo-v1.model"
+    volumes:
+    - ./models/delivery:/models/delivery:ro
     expose:
       - "8080"
     depends_on:

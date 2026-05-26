@@ -5,22 +5,12 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.enterprise.event.Observes;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
-import org.tribuo.Dataset;
 import org.tribuo.Model;
-import org.tribuo.MutableDataset;
 import org.tribuo.Prediction;
-import org.tribuo.data.csv.CSVLoader;
-import org.tribuo.evaluation.TrainTestSplitter;
 import org.tribuo.regression.Regressor;
-import org.tribuo.regression.RegressionFactory;
-import org.tribuo.regression.evaluation.RegressionEvaluator;
-import org.tribuo.regression.rtree.CARTRegressionTrainer;
 
-import java.io.InputStream;
+import java.io.ObjectInputStream;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-
-import java.net.URL;
 import java.nio.file.Path;
 import java.util.Optional;
 
@@ -29,7 +19,6 @@ public class DeliveryTribuoModelService {
 
     private static final Logger LOG = Logger.getLogger(DeliveryTribuoModelService.class);
 
-    private static final String TARGET_COLUMN = "delivery_days";
     private static final String MODEL_VERSION = "delivery-tribuo-v1";
 
     private Model<Regressor> model;
@@ -37,14 +26,8 @@ public class DeliveryTribuoModelService {
     @ConfigProperty(name = "app.delivery-ml.enabled", defaultValue = "true")
     boolean enabled;
 
-    @ConfigProperty(
-            name = "app.delivery-ml.training-resource",
-            defaultValue = "ml/olist_delivery_training_tribuo.csv"
-    )
-    String trainingResource;
-
-    @ConfigProperty(name = "app.delivery-ml.tree-depth", defaultValue = "8")
-    int treeDepth;
+    @ConfigProperty(name = "app.delivery-ml.model-path")
+    String modelPath;
 
     void onStart(@Observes StartupEvent event) {
         if (!enabled) {
@@ -53,9 +36,13 @@ public class DeliveryTribuoModelService {
         }
 
         try {
-            trainModel();
+            loadModel();
         } catch (Exception exception) {
-            LOG.error("Falha ao treinar modelo Tribuo de entrega. O serviço continuará usando baseline/fallback.", exception);
+            LOG.errorf(
+                    exception,
+                    "Falha ao carregar modelo Tribuo de entrega em %s. O serviço continuará usando baseline/fallback.",
+                    modelPath
+            );
         }
     }
 
@@ -94,55 +81,28 @@ public class DeliveryTribuoModelService {
         ));
     }
 
-    private void trainModel() throws Exception {
-        InputStream inputStream = Thread.currentThread()
-                .getContextClassLoader()
-                .getResourceAsStream(trainingResource);
+    @SuppressWarnings("unchecked")
+    private void loadModel() throws Exception {
+        Path path = Path.of(modelPath);
 
-        if (inputStream == null) {
-            LOG.warnf("CSV de treino Tribuo não encontrado: %s", trainingResource);
+        if (!Files.exists(path)) {
+            LOG.warnf("Modelo Tribuo de entrega não encontrado: %s", path.toAbsolutePath());
             return;
         }
 
-        Path csvPath = Files.createTempFile("olist-delivery-training-", ".csv");
+        LOG.infof("Carregando modelo Tribuo de entrega: %s", path.toAbsolutePath());
 
-        try (inputStream) {
-            Files.copy(inputStream, csvPath, StandardCopyOption.REPLACE_EXISTING);
+        try (ObjectInputStream inputStream = new ObjectInputStream(Files.newInputStream(path))) {
+            Object object = inputStream.readObject();
+
+            if (!(object instanceof Model<?> loadedModel)) {
+                throw new IllegalStateException("Arquivo não contém um modelo Tribuo válido: " + path);
+            }
+
+            this.model = (Model<Regressor>) loadedModel;
         }
 
-        LOG.infof("Treinando modelo Tribuo de entrega. csv=%s, treeDepth=%d", csvPath, treeDepth);
-
-        RegressionFactory factory = new RegressionFactory();
-        CSVLoader<Regressor> loader = new CSVLoader<>(factory);
-
-        var dataSource = loader.loadDataSource(csvPath, TARGET_COLUMN);
-
-        TrainTestSplitter<Regressor> splitter = new TrainTestSplitter<>(
-                dataSource,
-                0.8,
-                42L
-        );
-
-        Dataset<Regressor> trainData = new MutableDataset<>(splitter.getTrain());
-        Dataset<Regressor> testData = new MutableDataset<>(splitter.getTest());
-
-        CARTRegressionTrainer trainer = new CARTRegressionTrainer(treeDepth);
-
-        Model<Regressor> trainedModel = trainer.train(trainData);
-
-        RegressionEvaluator evaluator = new RegressionEvaluator();
-        var evaluation = evaluator.evaluate(trainedModel, testData);
-
-        LOG.infof(
-                "Modelo Tribuo treinado. trainSize=%d, testSize=%d, averageRMSE=%.3f, averageMAE=%.3f, averageR2=%.3f",
-                trainData.size(),
-                testData.size(),
-                evaluation.averageRMSE(),
-                evaluation.averageMAE(),
-                evaluation.averageR2()
-        );
-
-        this.model = trainedModel;
+        LOG.infof("Modelo Tribuo de entrega carregado com sucesso. modelVersion=%s", MODEL_VERSION);
     }
 
     private int sanitizeEstimatedDays(double value) {
