@@ -58,3 +58,14 @@ delivery-estimator-api/src/main/resources/ml/*.model
 # Versionar arquivos necessários para a aplicação
 !delivery-estimator-api/src/main/resources/ml/olist_delivery_route_baseline.csv
 !delivery-estimator-api/src/main/resources/ml/olist_delivery_training_tribuo.csv
+
+# Fraud Olist processed datasets
+data/fraud/olist/processed/*.csv
+
+# Fraud generated models
+fraud-detector-api/src/main/resources/ml/*.tribuo
+fraud-detector-api/src/main/resources/ml/*.model
+
+# Allow gitkeep
+!data/fraud/olist/processed/.gitkeep
+!fraud-detector-api/src/main/resources/ml/.gitkeep
