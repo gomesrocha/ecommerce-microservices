@@ -8,6 +8,20 @@
   "output_encoding": "no-op",
   "endpoints": [
     {
+      "endpoint": "/api/ai/chat",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_headers": ["Content-Type", "Authorization"],
+      "backend": [
+        {
+          "host": ["http://ai-chat-bff:8080"],
+          "url_pattern": "/chat",
+          "method": "POST",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
       "endpoint": "/api/products",
       "method": "GET",
       "output_encoding": "no-op",
