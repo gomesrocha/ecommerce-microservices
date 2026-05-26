@@ -159,6 +159,11 @@ services:
       RABBITMQ_USERNAME: ${RABBITMQ_DEFAULT_USER:-ecommerce}
       RABBITMQ_PASSWORD: ${RABBITMQ_DEFAULT_PASS:-ecommerce}
       RABBITMQ_VIRTUAL_HOST: /
+
+      APP_FRAUD_ML_ENABLED: "true"
+      APP_FRAUD_ML_MODEL_PATH: "/models/fraud/fraud-tribuo-v1.model"
+    volumes:
+    - ./models/fraud:/models/fraud:ro
     expose:
       - "8080"
     depends_on:
