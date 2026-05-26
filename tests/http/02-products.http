@@ -1,0 +1,116 @@
+### ============================================================
+### 02-products.http
+### Testes de Product API via API Gateway
+###
+### Pré-requisito:
+### - Executar 00-auth.http antes para salvar access_token
+### ============================================================
+
+@gateway = http://localhost:8099
+@sku = HTTP-PROD-{{$timestamp}}
+
+
+### ------------------------------------------------------------
+### 1. Criar produto
+### Salva automaticamente:
+### - product_id
+### - product_sku
+### ------------------------------------------------------------
+# @name createProduct
+POST {{gateway}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "name": "Produto HTTP Test",
+  "description": "Produto criado pela suíte HTTP",
+  "sku": "{{sku}}",
+  "price": 100.00,
+  "stockQuantity": 10,
+  "originState": "SP"
+}
+
+> {%
+    client.test("Produto deve ser criado com HTTP 200 ou 201", function () {
+        client.assert(response.status === 200 || response.status === 201, "Status esperado: 200 ou 201");
+    });
+
+    client.test("Produto deve retornar id", function () {
+        client.assert(response.body.id !== undefined, "id do produto não retornado");
+    });
+
+    client.global.set("product_id", response.body.id);
+    client.global.set("product_sku", response.body.sku);
+%}
+
+
+### ------------------------------------------------------------
+### 2. Listar produtos
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/products
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 3. Buscar produto criado por ID
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/products/{{product_id}}
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 4. Atualizar produto criado
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+PUT {{gateway}}/api/products/{{product_id}}
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "name": "Produto HTTP Test Atualizado",
+  "description": "Produto atualizado pela suíte HTTP",
+  "price": 120.00,
+  "stockQuantity": 15,
+  "originState": "SP",
+  "status": "ACTIVE"
+}
+
+
+### ------------------------------------------------------------
+### 5. Buscar produto atualizado
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/products/{{product_id}}
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 6. Criar produto para testar desativação
+### ------------------------------------------------------------
+# @name createProductToDeactivate
+POST {{gateway}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "name": "Produto para Desativar",
+  "description": "Produto criado apenas para testar deactivate",
+  "sku": "HTTP-INACTIVE-{{$timestamp}}",
+  "price": 50.00,
+  "stockQuantity": 5,
+  "originState": "SP"
+}
+
+> {%
+    client.global.set("product_to_deactivate_id", response.body.id);
+%}
+
+
+### ------------------------------------------------------------
+### 7. Desativar produto
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+PATCH {{gateway}}/api/products/{{product_to_deactivate_id}}/deactivate
+Authorization: Bearer {{access_token}}

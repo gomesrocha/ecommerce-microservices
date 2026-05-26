@@ -1,0 +1,82 @@
+### ============================================================
+### 08-gateway-security.http
+### Testes de segurança do API Gateway
+###
+### Pré-requisito:
+### - Executar 00-auth.http antes para salvar access_token
+### ============================================================
+
+@gateway = http://localhost:8099
+
+
+### ------------------------------------------------------------
+### 1. JWKS deve ser público
+### Esperado:
+### - HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/auth/.well-known/jwks.json
+
+
+### ------------------------------------------------------------
+### 2. Login deve ser público
+### Esperado:
+### - HTTP 200 com credenciais válidas
+### ------------------------------------------------------------
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+
+### ------------------------------------------------------------
+### 3. Rota protegida sem token
+### Esperado:
+### - HTTP 401
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+
+
+### ------------------------------------------------------------
+### 4. Rota protegida com token inválido
+### Esperado:
+### - HTTP 401
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+Authorization: Bearer token_invalido
+
+
+### ------------------------------------------------------------
+### 5. Rota protegida com token válido
+### Esperado:
+### - HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 6. Acesso direto aos microsserviços pelo host deve falhar
+### Observação:
+### - Estes testes só funcionam se os microsserviços estiverem
+###   sem "ports" no docker-compose, usando apenas "expose".
+### - Esperado no terminal/curl: connection refused.
+### - Alguns HTTP Clients podem mostrar erro de conexão.
+### ------------------------------------------------------------
+
+### user-api direto - esperado falhar
+GET http://localhost:8094/q/health
+
+### product-api direto - esperado falhar
+GET http://localhost:8095/q/health
+
+### order-api direto - esperado falhar
+GET http://localhost:8096/q/health
+
+### delivery-estimator-api direto - esperado falhar
+GET http://localhost:8097/q/health
+
+### fraud-detector-api direto - esperado falhar
+GET http://localhost:8098/q/health

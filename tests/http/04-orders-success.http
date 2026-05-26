@@ -1,0 +1,114 @@
+### ============================================================
+### 04-orders-success.http
+### Fluxo feliz de pedido via API Gateway
+###
+### Pré-requisito:
+### - Executar 00-auth.http antes para salvar access_token
+### ============================================================
+
+@gateway = http://localhost:8099
+@sku = HTTP-ORDER-{{$timestamp}}
+
+
+### ------------------------------------------------------------
+### 1. Garantir rota de entrega SP -> SE
+### ------------------------------------------------------------
+PUT {{gateway}}/api/delivery-estimates/routes
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "SE",
+  "minDays": 5,
+  "estimatedDays": 8,
+  "maxDays": 13,
+  "source": "MANUAL_BASELINE",
+  "modelVersion": "baseline-routes-v1"
+}
+
+
+### ------------------------------------------------------------
+### 2. Criar produto para pedido
+### Salva automaticamente:
+### - order_product_id
+### ------------------------------------------------------------
+# @name createOrderProduct
+POST {{gateway}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "name": "Produto Pedido HTTP",
+  "description": "Produto para testar criação de pedido",
+  "sku": "{{sku}}",
+  "price": 100.00,
+  "stockQuantity": 10,
+  "originState": "SP"
+}
+
+> {%
+    client.test("Produto do pedido deve ser criado", function () {
+        client.assert(response.status === 200 || response.status === 201, "Status esperado: 200 ou 201");
+    });
+
+    client.global.set("order_product_id", response.body.id);
+%}
+
+
+### ------------------------------------------------------------
+### 3. Criar pedido
+### Salva automaticamente:
+### - order_id
+### Esperado inicial:
+### - status = WAITING_STOCK
+### ------------------------------------------------------------
+# @name createOrder
+POST {{gateway}}/api/orders
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "userId": 1,
+  "customerState": "SE",
+  "items": [
+    {
+      "productId": {{order_product_id}},
+      "quantity": 2
+    }
+  ]
+}
+
+> {%
+    client.test("Pedido deve ser criado", function () {
+        client.assert(response.status === 200 || response.status === 201, "Status esperado: 200 ou 201");
+    });
+
+    client.test("Pedido deve retornar id", function () {
+        client.assert(response.body.id !== undefined, "id do pedido não retornado");
+    });
+
+    client.global.set("order_id", response.body.id);
+%}
+
+
+### ------------------------------------------------------------
+### 4. Consultar pedido
+### Observação:
+### - Como o fluxo é assíncrono, aguarde 1 a 3 segundos antes de executar.
+### Esperado final:
+### - status = CONFIRMED
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders/{{order_id}}
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 5. Consultar histórico do pedido
+### Esperado:
+### - ORDER_CREATED
+### - STOCK_RESERVED
+### - FRAUD_APPROVED
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders/{{order_id}}/history
+Authorization: Bearer {{access_token}}

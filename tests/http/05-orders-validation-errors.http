@@ -1,0 +1,92 @@
+### ============================================================
+### 05-orders-validation-errors.http
+### Testes de erros padronizados no Order API via Gateway
+###
+### Pré-requisito:
+### - Executar 00-auth.http antes para salvar access_token
+### ============================================================
+
+@gateway = http://localhost:8099
+
+
+### ------------------------------------------------------------
+### 1. Pedido inválido - campos obrigatórios ausentes
+### Esperado:
+### - HTTP 400
+### - error = VALIDATION_ERROR
+### - details com mensagens de validação
+### ------------------------------------------------------------
+POST {{gateway}}/api/orders
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "userId": null,
+  "customerState": "",
+  "items": []
+}
+
+> {%
+    client.test("Pedido inválido deve retornar HTTP 400", function () {
+        client.assert(response.status === 400, "Status esperado: 400");
+    });
+
+    client.test("Erro deve ser VALIDATION_ERROR", function () {
+        client.assert(response.body.error === "VALIDATION_ERROR", "error esperado: VALIDATION_ERROR");
+    });
+%}
+
+
+### ------------------------------------------------------------
+### 2. Produto inexistente
+### Esperado:
+### - HTTP 400
+### - error = BAD_REQUEST
+### - message = Produto não encontrado
+### ------------------------------------------------------------
+POST {{gateway}}/api/orders
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "userId": 1,
+  "customerState": "SE",
+  "items": [
+    {
+      "productId": 999999,
+      "quantity": 1
+    }
+  ]
+}
+
+> {%
+    client.test("Produto inexistente deve retornar HTTP 400", function () {
+        client.assert(response.status === 400, "Status esperado: 400");
+    });
+
+    client.test("Erro deve ser BAD_REQUEST", function () {
+        client.assert(response.body.error === "BAD_REQUEST", "error esperado: BAD_REQUEST");
+    });
+%}
+
+
+### ------------------------------------------------------------
+### 3. Quantidade inválida
+### Esperado:
+### - HTTP 400
+### - error = VALIDATION_ERROR
+### ------------------------------------------------------------
+POST {{gateway}}/api/orders
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "userId": 1,
+  "customerState": "SE",
+  "items": [
+    {
+      "productId": 1,
+      "quantity": 0
+    }
+  ]
+}

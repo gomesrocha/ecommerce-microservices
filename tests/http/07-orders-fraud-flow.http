@@ -1,0 +1,113 @@
+### ============================================================
+### 07-orders-fraud-flow.http
+### Testes de fluxo com possível rejeição por fraude
+###
+### Pré-requisito:
+### - Executar 00-auth.http antes para salvar access_token
+###
+### Observação:
+### - Este teste assume que o fraud-detector-api rejeita pedidos
+###   de valor alto, conforme regra implementada no projeto.
+### ============================================================
+
+@gateway = http://localhost:8099
+@sku = HTTP-FRAUD-{{$timestamp}}
+
+
+### ------------------------------------------------------------
+### 1. Garantir rota de entrega SP -> SE
+### ------------------------------------------------------------
+PUT {{gateway}}/api/delivery-estimates/routes
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "SE",
+  "minDays": 5,
+  "estimatedDays": 8,
+  "maxDays": 13,
+  "source": "MANUAL_BASELINE",
+  "modelVersion": "baseline-routes-v1"
+}
+
+
+### ------------------------------------------------------------
+### 2. Criar produto de alto valor
+### Salva:
+### - fraud_product_id
+### ------------------------------------------------------------
+# @name createFraudProduct
+POST {{gateway}}/api/products
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "name": "Produto Alto Valor HTTP",
+  "description": "Produto para testar fluxo de fraude",
+  "sku": "{{sku}}",
+  "price": 4000.00,
+  "stockQuantity": 10,
+  "originState": "SP"
+}
+
+> {%
+    client.global.set("fraud_product_id", response.body.id);
+%}
+
+
+### ------------------------------------------------------------
+### 3. Criar pedido de alto valor
+### Salva:
+### - fraud_order_id
+### ------------------------------------------------------------
+# @name createFraudOrder
+POST {{gateway}}/api/orders
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "userId": 1,
+  "customerState": "SE",
+  "items": [
+    {
+      "productId": {{fraud_product_id}},
+      "quantity": 2
+    }
+  ]
+}
+
+> {%
+    client.global.set("fraud_order_id", response.body.id);
+%}
+
+
+### ------------------------------------------------------------
+### 4. Consultar pedido após análise de fraude
+### Observação:
+### - Aguarde alguns segundos antes de executar.
+### Esperado:
+### - CONFIRMED ou REJECTED, dependendo da regra de fraude atual
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders/{{fraud_order_id}}
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 5. Consultar histórico do pedido
+### Esperado:
+### - ORDER_CREATED
+### - STOCK_RESERVED
+### - FRAUD_APPROVED ou FRAUD_REJECTED
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders/{{fraud_order_id}}/history
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 6. Consultar análise de fraude do pedido
+### Esperado:
+### - HTTP 200 se a análise foi registrada
+### ------------------------------------------------------------
+GET {{gateway}}/api/fraud-analyses/order/{{fraud_order_id}}
+Authorization: Bearer {{access_token}}
