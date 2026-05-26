@@ -309,7 +309,10 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - ecommerce_grafana_data:/var/lib/grafana
-      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infra/observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+        
     ports:
       - "3000:3000"
     depends_on:

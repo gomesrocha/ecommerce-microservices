@@ -1,0 +1,154 @@
+{
+  "uid": "ecommerce-ml-ai",
+  "title": "Ecommerce ML & AI - Business Metrics",
+  "tags": ["ecommerce", "ml", "ai", "quarkus", "tribuo"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "10s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Delivery Predictions por fonte",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (source, model_version) (rate(delivery_predictions_total[5m]))",
+          "legendFormat": "{{source}} / {{model_version}}"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total de predições de entrega",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(delivery_predictions_total)",
+          "legendFormat": "predições"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Média de dias estimados",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(delivery_estimated_days_sum) / sum(delivery_estimated_days_count)",
+          "legendFormat": "dias"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Fraud Predictions por decisão",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (decision, source, model_version) (rate(fraud_predictions_total[5m]))",
+          "legendFormat": "{{decision}} / {{source}} / {{model_version}}"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Total análises de fraude",
+      "gridPos": { "x": 12, "y": 8, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(fraud_predictions_total)",
+          "legendFormat": "análises"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Média score de fraude",
+      "gridPos": { "x": 18, "y": 8, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(fraud_risk_score_sum) / sum(fraud_risk_score_count)",
+          "legendFormat": "score"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "AI Chat Requests por rota",
+      "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (route, intent, model) (rate(ai_chat_requests_total[5m]))",
+          "legendFormat": "{{route}} / {{intent}} / {{model}}"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 8,
+      "type": "stat",
+      "title": "Total AI Chat Requests",
+      "gridPos": { "x": 12, "y": 16, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(ai_chat_requests_total)",
+          "legendFormat": "requests"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 9,
+      "type": "stat",
+      "title": "Guardrails bloqueados",
+      "gridPos": { "x": 18, "y": 16, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(ai_chat_requests_total{route=\"guardrail\"})",
+          "legendFormat": "bloqueios"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 10,
+      "type": "bargauge",
+      "title": "AI Chat por intent",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (intent) (ai_chat_requests_total)",
+          "legendFormat": "{{intent}}"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    },
+    {
+      "id": 11,
+      "type": "bargauge",
+      "title": "Fraude por decisão",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (decision) (fraud_predictions_total)",
+          "legendFormat": "{{decision}}"
+        }
+      ],
+      "datasource": { "type": "prometheus", "uid": "prometheus" }
+    }
+  ]
+}
