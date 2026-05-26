@@ -85,3 +85,28 @@ Authorization: Bearer {{access_token}}
   "originState": "SP",
   "destinationState": "RJ"
 }
+
+### Estimar entrega usando baseline Olist
+### Esperado:
+### source = OLIST_BASELINE
+### #modelVersion = olist-baseline-v1
+POST {{gateway}}/api/delivery-estimates/estimate
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "SP",
+  "destinationState": "SE",
+  "totalItems": 1
+}
+
+### Estimar entrega usando modelo Tribuo
+POST {{gateway}}/api/delivery-estimates/estimate
+Content-Type: application/json
+Authorization: Bearer {{access_token}}
+
+{
+  "originState": "BA",
+  "destinationState": "AL",
+  "totalItems": 1
+}

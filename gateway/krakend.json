@@ -20,7 +20,7 @@
           "method": "GET",
           "encoding": "no-op"
         }
-      ],
+      ]
     },
     {
       "endpoint": "/api/products",

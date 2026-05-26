@@ -5,14 +5,18 @@ import br.com.ecommerce.dto.DeliveryRouteResponse;
 import br.com.ecommerce.dto.EstimateDeliveryRequest;
 import br.com.ecommerce.dto.EstimateDeliveryResponse;
 import br.com.ecommerce.dto.UpsertDeliveryRouteRequest;
+import br.com.ecommerce.ml.DeliveryPredictionResult;
+import br.com.ecommerce.ml.DeliveryTribuoModelService;
 import br.com.ecommerce.repository.DeliveryRouteEstimateRepository;
 import io.quarkus.panache.common.Sort;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 import jakarta.ws.rs.BadRequestException;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
 
 import java.util.List;
+import java.util.Optional;
 
 @ApplicationScoped
 public class DeliveryEstimateService {
@@ -20,27 +24,43 @@ public class DeliveryEstimateService {
     @Inject
     DeliveryRouteEstimateRepository repository;
 
+    @Inject
+    DeliveryTribuoModelService tribuoModelService;
+
+    @ConfigProperty(name = "app.delivery-ml.prefer-model", defaultValue = "true")
+    boolean preferModel;
+
     public EstimateDeliveryResponse estimate(EstimateDeliveryRequest request) {
         String origin = normalizeState(request.originState());
         String destination = normalizeState(request.destinationState());
-        Integer totalItems = request.totalItems();
+        Integer totalItems = validateTotalItems(request.totalItems());
 
-        DeliveryRouteEstimate route = repository
-                .findByOriginAndDestination(origin, destination)
-                .orElseGet(() -> createFallbackRoute(origin, destination));
+        if (preferModel) {
+            Optional<EstimateDeliveryResponse> modelResponse =
+                    estimateWithModel(origin, destination, totalItems);
 
-        Integer extraDaysByVolume = calculateExtraDaysByVolume(totalItems);
+            if (modelResponse.isPresent()) {
+                return modelResponse.get();
+            }
+        }
 
-        return new EstimateDeliveryResponse(
-                origin,
-                destination,
-                totalItems,
-                route.minDays + extraDaysByVolume,
-                route.estimatedDays + extraDaysByVolume,
-                route.maxDays + extraDaysByVolume,
-                route.source,
-                route.modelVersion
-        );
+        Optional<EstimateDeliveryResponse> routeResponse =
+                estimateWithPersistedRoute(origin, destination, totalItems);
+
+        if (routeResponse.isPresent()) {
+            return routeResponse.get();
+        }
+
+        if (!preferModel) {
+            Optional<EstimateDeliveryResponse> modelResponse =
+                    estimateWithModel(origin, destination, totalItems);
+
+            if (modelResponse.isPresent()) {
+                return modelResponse.get();
+            }
+        }
+
+        return estimateWithFallback(origin, destination, totalItems);
     }
 
     public List<DeliveryRouteResponse> listRoutes() {
@@ -77,6 +97,81 @@ public class DeliveryEstimateService {
         return DeliveryRouteResponse.fromEntity(route);
     }
 
+    private Optional<EstimateDeliveryResponse> estimateWithModel(
+            String origin,
+            String destination,
+            Integer totalItems
+    ) {
+        if (!tribuoModelService.isReady()) {
+            return Optional.empty();
+        }
+
+        return tribuoModelService
+                .predict(origin, destination, totalItems)
+                .map(result -> toResponse(origin, destination, totalItems, result));
+    }
+
+    private EstimateDeliveryResponse toResponse(
+            String origin,
+            String destination,
+            Integer totalItems,
+            DeliveryPredictionResult result
+    ) {
+        return new EstimateDeliveryResponse(
+                origin,
+                destination,
+                totalItems,
+                result.minDays(),
+                result.estimatedDays(),
+                result.maxDays(),
+                result.source(),
+                result.modelVersion()
+        );
+    }
+
+    private Optional<EstimateDeliveryResponse> estimateWithPersistedRoute(
+            String origin,
+            String destination,
+            Integer totalItems
+    ) {
+        return repository
+                .findByOriginAndDestination(origin, destination)
+                .map(route -> {
+                    Integer extraDaysByVolume = calculateExtraDaysByVolume(totalItems);
+
+                    return new EstimateDeliveryResponse(
+                            origin,
+                            destination,
+                            totalItems,
+                            route.minDays + extraDaysByVolume,
+                            route.estimatedDays + extraDaysByVolume,
+                            route.maxDays + extraDaysByVolume,
+                            route.source,
+                            route.modelVersion
+                    );
+                });
+    }
+
+    private EstimateDeliveryResponse estimateWithFallback(
+            String origin,
+            String destination,
+            Integer totalItems
+    ) {
+        DeliveryRouteEstimate route = createFallbackRoute(origin, destination);
+        Integer extraDaysByVolume = calculateExtraDaysByVolume(totalItems);
+
+        return new EstimateDeliveryResponse(
+                origin,
+                destination,
+                totalItems,
+                route.minDays + extraDaysByVolume,
+                route.estimatedDays + extraDaysByVolume,
+                route.maxDays + extraDaysByVolume,
+                route.source,
+                route.modelVersion
+        );
+    }
+
     private DeliveryRouteEstimate createFallbackRoute(String origin, String destination) {
         DeliveryRouteEstimate route = new DeliveryRouteEstimate();
 
@@ -99,10 +194,16 @@ public class DeliveryEstimateService {
         return route;
     }
 
-    private Integer calculateExtraDaysByVolume(Integer totalItems) {
+    private Integer validateTotalItems(Integer totalItems) {
         if (totalItems == null || totalItems <= 0) {
             throw new BadRequestException("A quantidade de itens deve ser maior que zero");
         }
+
+        return totalItems;
+    }
+
+    private Integer calculateExtraDaysByVolume(Integer totalItems) {
+        validateTotalItems(totalItems);
 
         if (totalItems <= 3) {
             return 0;
