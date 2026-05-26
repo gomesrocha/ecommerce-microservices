@@ -15,6 +15,7 @@
         <quarkus.platform.version>3.35.4</quarkus.platform.version>
         <skipITs>true</skipITs>
         <surefire-plugin.version>3.5.4</surefire-plugin.version>
+        <tribuo.version>4.3.2</tribuo.version>
     </properties>
 
     <dependencyManagement>
@@ -87,6 +88,17 @@
             <groupId>io.rest-assured</groupId>
             <artifactId>rest-assured</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.tribuo</groupId>
+            <artifactId>tribuo-classification-core</artifactId>
+            <version>${tribuo.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.tribuo</groupId>
+            <artifactId>tribuo-classification-tree</artifactId>
+            <version>${tribuo.version}</version>
         </dependency>
     </dependencies>
 

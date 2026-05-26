@@ -3,6 +3,8 @@ package br.com.ecommerce.service;
 import br.com.ecommerce.domain.FraudAnalysis;
 import br.com.ecommerce.domain.FraudStatus;
 import br.com.ecommerce.event.OrderCreatedEvent;
+import br.com.ecommerce.ml.FraudPredictionResult;
+import br.com.ecommerce.ml.FraudTribuoModelService;
 import br.com.ecommerce.repository.FraudAnalysisRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
@@ -16,8 +18,13 @@ import java.util.List;
 @ApplicationScoped
 public class FraudAnalysisService {
 
+    private static final BigDecimal RULE_REJECTION_THRESHOLD = new BigDecimal("70.00");
+
     @Inject
     FraudAnalysisRepository repository;
+
+    @Inject
+    FraudTribuoModelService fraudTribuoModelService;
 
     @Transactional
     public FraudAnalysis analyze(OrderCreatedEvent event) {
@@ -35,14 +42,13 @@ public class FraudAnalysisService {
 
     public FraudAnalysis findByOrderId(Long orderId) {
         return repository.findByOrderId(orderId)
-                .orElseThrow(() -> new BadRequestException("Análise de fraude não encontrada para o pedido " + orderId));
+                .orElseThrow(() -> new BadRequestException(
+                        "Análise de fraude não encontrada para o pedido " + orderId
+                ));
     }
 
     private FraudAnalysis createAnalysis(OrderCreatedEvent event) {
-        BigDecimal riskScore = calculateRiskScore(event);
-        FraudStatus status = riskScore.compareTo(new BigDecimal("70.00")) >= 0
-                ? FraudStatus.REJECTED
-                : FraudStatus.APPROVED;
+        FraudDecision decision = analyzeWithModelOrRules(event);
 
         FraudAnalysis analysis = new FraudAnalysis();
 
@@ -51,13 +57,57 @@ public class FraudAnalysisService {
         analysis.userId = event.payload().userId();
         analysis.customerState = event.payload().customerState();
         analysis.totalAmount = event.payload().totalAmount();
-        analysis.riskScore = riskScore;
-        analysis.status = status;
-        analysis.reason = buildReason(status, riskScore, analysis.totalAmount);
+        analysis.riskScore = decision.riskScore();
+        analysis.status = decision.status();
+        analysis.reason = decision.reason();
 
         repository.persist(analysis);
 
         return analysis;
+    }
+
+    private FraudDecision analyzeWithModelOrRules(OrderCreatedEvent event) {
+        if (fraudTribuoModelService.isReady()) {
+            FraudPredictionResult prediction = fraudTribuoModelService.predict(
+                    event.payload().totalAmount(),
+                    calculateItemsQuantity(event),
+                    calculateAvgItemPrice(event),
+                    calculateMaxItemPrice(event),
+                    calculateUniqueProducts(event),
+                    findOriginState(event),
+                    event.payload().customerState()
+            ).orElse(null);
+
+            if (prediction != null) {
+                BigDecimal riskScore = BigDecimal
+                        .valueOf(prediction.riskScore() * 100)
+                        .setScale(2, RoundingMode.HALF_UP);
+
+                FraudStatus status = prediction.fraudRisk()
+                        ? FraudStatus.REJECTED
+                        : FraudStatus.APPROVED;
+
+                String reason = prediction.reason()
+                        + " Label: " + prediction.label()
+                        + ". Modelo: " + prediction.modelVersion()
+                        + ". Score de risco: " + riskScore
+                        + ". Valor total: " + event.payload().totalAmount();
+
+                return new FraudDecision(status, riskScore, reason);
+            }
+        }
+
+        BigDecimal riskScore = calculateRiskScore(event);
+
+        FraudStatus status = riskScore.compareTo(RULE_REJECTION_THRESHOLD) >= 0
+                ? FraudStatus.REJECTED
+                : FraudStatus.APPROVED;
+
+        return new FraudDecision(
+                status,
+                riskScore,
+                buildReason(status, riskScore, event.payload().totalAmount())
+        );
     }
 
     private BigDecimal calculateRiskScore(OrderCreatedEvent event) {
@@ -73,18 +123,14 @@ public class FraudAnalysisService {
             score = score.add(new BigDecimal("35.00"));
         }
 
-        Integer totalItems = event.payload().items() == null
-                ? 0
-                : event.payload().items()
-                    .stream()
-                    .mapToInt(item -> item.quantity() == null ? 0 : item.quantity())
-                    .sum();
+        Integer totalItems = calculateItemsQuantity(event);
 
         if (totalItems > 5) {
             score = score.add(new BigDecimal("20.00"));
         }
 
-        if (event.payload().estimatedDeliveryDays() != null && event.payload().estimatedDeliveryDays() > 15) {
+        if (event.payload().estimatedDeliveryDays() != null
+                && event.payload().estimatedDeliveryDays() > 15) {
             score = score.add(new BigDecimal("10.00"));
         }
 
@@ -95,12 +141,84 @@ public class FraudAnalysisService {
         return score.setScale(2, RoundingMode.HALF_UP);
     }
 
-    private String buildReason(FraudStatus status, BigDecimal riskScore, BigDecimal totalAmount) {
-        if (FraudStatus.REJECTED.equals(status)) {
-            return "Pedido rejeitado por score de risco elevado: " + riskScore + ". Valor total: " + totalAmount;
+    private Integer calculateItemsQuantity(OrderCreatedEvent event) {
+        if (event.payload().items() == null || event.payload().items().isEmpty()) {
+            return 1;
         }
 
-        return "Pedido aprovado na análise de fraude. Score de risco: " + riskScore + ". Valor total: " + totalAmount;
+        int total = event.payload().items()
+                .stream()
+                .mapToInt(item -> item.quantity() == null ? 0 : item.quantity())
+                .sum();
+
+        return Math.max(1, total);
+    }
+
+    private BigDecimal calculateAvgItemPrice(OrderCreatedEvent event) {
+        BigDecimal totalAmount = event.payload().totalAmount() == null
+                ? BigDecimal.ZERO
+                : event.payload().totalAmount();
+
+        int itemsQuantity = Math.max(1, calculateItemsQuantity(event));
+
+        return totalAmount.divide(
+                BigDecimal.valueOf(itemsQuantity),
+                2,
+                RoundingMode.HALF_UP
+        );
+    }
+
+    private BigDecimal calculateMaxItemPrice(OrderCreatedEvent event) {
+        if (event.payload().items() == null || event.payload().items().isEmpty()) {
+            return event.payload().totalAmount() == null
+                    ? BigDecimal.ZERO
+                    : event.payload().totalAmount();
+        }
+
+        return event.payload().items()
+                .stream()
+                .map(item -> item.unitPrice() == null ? BigDecimal.ZERO : item.unitPrice())
+                .max(BigDecimal::compareTo)
+                .orElse(BigDecimal.ZERO);
+    }
+
+    private Integer calculateUniqueProducts(OrderCreatedEvent event) {
+        if (event.payload().items() == null || event.payload().items().isEmpty()) {
+            return 1;
+        }
+
+        return (int) event.payload().items()
+                .stream()
+                .map(item -> item.productId())
+                .distinct()
+                .count();
+    }
+
+    private String findOriginState(OrderCreatedEvent event) {
+        if (event.payload().items() == null || event.payload().items().isEmpty()) {
+            return "SP";
+        }
+
+        return event.payload().items()
+                .stream()
+                .map(item -> item.originState())
+                .filter(origin -> origin != null && !origin.isBlank())
+                .findFirst()
+                .orElse("SP");
+    }
+
+    private String buildReason(FraudStatus status, BigDecimal riskScore, BigDecimal totalAmount) {
+        if (FraudStatus.REJECTED.equals(status)) {
+            return "Pedido rejeitado por score de risco elevado: "
+                    + riskScore
+                    + ". Valor total: "
+                    + totalAmount;
+        }
+
+        return "Pedido aprovado na análise de fraude. Score de risco: "
+                + riskScore
+                + ". Valor total: "
+                + totalAmount;
     }
 
     private void validateEvent(OrderCreatedEvent event) {
@@ -119,5 +237,12 @@ public class FraudAnalysisService {
         if (event.payload().totalAmount() == null) {
             throw new BadRequestException("Evento order.created sem totalAmount");
         }
+    }
+
+    private record FraudDecision(
+            FraudStatus status,
+            BigDecimal riskScore,
+            String reason
+    ) {
     }
 }
