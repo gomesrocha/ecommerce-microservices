@@ -69,3 +69,12 @@ fraud-detector-api/src/main/resources/ml/*.model
 # Allow gitkeep
 !data/fraud/olist/processed/.gitkeep
 !fraud-detector-api/src/main/resources/ml/.gitkeep
+
+# Generated ML models
+models/**/*.model
+models/**/*.tribuo
+models/**/*.ser
+
+# Keep model folders
+!models/delivery/.gitkeep
+!models/fraud/.gitkeep
