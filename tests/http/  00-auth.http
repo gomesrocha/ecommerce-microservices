@@ -1,0 +1,118 @@
+### ============================================================
+### 00-auth.http
+### Testes de autenticação via API Gateway KrakenD
+### ============================================================
+
+@gateway = http://localhost:8099
+@username = admin
+@password = admin123
+
+
+### ------------------------------------------------------------
+### 1. Consultar JWKS público
+### Esperado:
+### - HTTP 200
+### - JSON com keys[]
+### - kid = ecommerce-key-1
+### ------------------------------------------------------------
+GET {{gateway}}/api/auth/.well-known/jwks.json
+
+
+### ------------------------------------------------------------
+### 2. Login
+### Este request salva automaticamente:
+### - access_token
+### - refresh_token
+###
+### Depois de executar este request, os próximos podem usar:
+### Authorization: Bearer {{access_token}}
+### ------------------------------------------------------------
+# @name login
+POST {{gateway}}/api/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.test("Login deve retornar HTTP 200", function () {
+        client.assert(response.status === 200, "Status esperado: 200");
+    });
+
+    client.test("Login deve retornar access_token", function () {
+        client.assert(response.body.access_token !== undefined, "access_token não retornado");
+    });
+
+    client.test("Login deve retornar refresh_token", function () {
+        client.assert(response.body.refresh_token !== undefined, "refresh_token não retornado");
+    });
+
+    client.global.set("access_token", response.body.access_token);
+    client.global.set("refresh_token", response.body.refresh_token);
+%}
+
+
+### ------------------------------------------------------------
+### 3. Testar rota protegida sem token
+### Esperado:
+### - HTTP 401 Unauthorized
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+
+
+### ------------------------------------------------------------
+### 4. Testar rota protegida com token inválido
+### Esperado:
+### - HTTP 401 Unauthorized
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+Authorization: Bearer token_invalido
+
+
+### ------------------------------------------------------------
+### 5. Testar rota protegida com access_token salvo automaticamente
+### Esperado:
+### - HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 6. Renovar token usando refresh_token salvo automaticamente
+### Esperado:
+### - HTTP 200
+### - novo access_token
+### - novo refresh_token
+### ------------------------------------------------------------
+# @name refreshToken
+POST {{gateway}}/api/auth/refresh-token
+Content-Type: application/json
+
+{
+  "refresh_token": "{{refresh_token}}"
+}
+
+> {%
+    client.test("Refresh token deve retornar HTTP 200", function () {
+        client.assert(response.status === 200, "Status esperado: 200");
+    });
+
+    client.test("Refresh token deve retornar novo access_token", function () {
+        client.assert(response.body.access_token !== undefined, "access_token não retornado no refresh");
+    });
+
+    client.global.set("access_token", response.body.access_token);
+    client.global.set("refresh_token", response.body.refresh_token);
+%}
+
+
+### ------------------------------------------------------------
+### 7. Testar rota protegida com token renovado
+### Esperado:
+### - HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+Authorization: Bearer {{access_token}}

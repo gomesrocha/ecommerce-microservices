@@ -1,0 +1,32 @@
+### ============================================================
+### 01-health.http
+### Testes simples de disponibilidade via API Gateway
+###
+### Pré-requisito:
+### - Executar 00-auth.http antes para salvar access_token
+### ============================================================
+
+@gateway = http://localhost:8099
+
+
+### ------------------------------------------------------------
+### 1. Validar JWKS público
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/auth/.well-known/jwks.json
+
+
+### ------------------------------------------------------------
+### 2. Validar listagem de produtos via Gateway
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/products
+Authorization: Bearer {{access_token}}
+
+
+### ------------------------------------------------------------
+### 3. Validar listagem de pedidos via Gateway
+### Esperado: HTTP 200
+### ------------------------------------------------------------
+GET {{gateway}}/api/orders
+Authorization: Bearer {{access_token}}
