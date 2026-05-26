@@ -51,6 +51,8 @@ public class AuthService {
                 .claim("fresh", fresh)
                 .claim("cpf", user.cpf)
                 .expiresAt(Instant.now().plus(Duration.ofMinutes(minutos)))
+                .jws()
+                .keyId(JwksResource.KEY_ID)
                 .sign();
     }
 }

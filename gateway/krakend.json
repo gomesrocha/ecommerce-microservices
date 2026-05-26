@@ -20,7 +20,7 @@
           "method": "GET",
           "encoding": "no-op"
         }
-      ]
+      ],
     },
     {
       "endpoint": "/api/products",
@@ -34,7 +34,21 @@
           "method": "POST",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/products/{id}",
@@ -62,7 +76,21 @@
           "method": "PUT",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/products/{id}/deactivate",
@@ -76,7 +104,21 @@
           "method": "PATCH",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/orders",
@@ -91,7 +133,21 @@
           "method": "GET",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/orders",
@@ -105,7 +161,21 @@
           "method": "POST",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/orders/{id}",
@@ -119,7 +189,21 @@
           "method": "GET",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/orders/{id}/history",
@@ -133,7 +217,21 @@
           "method": "GET",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/orders/{id}/cancel",
@@ -147,7 +245,21 @@
           "method": "PATCH",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/delivery-estimates/estimate",
@@ -161,7 +273,21 @@
           "method": "POST",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/delivery-estimates/routes",
@@ -175,7 +301,21 @@
           "method": "GET",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/delivery-estimates/routes",
@@ -189,7 +329,21 @@
           "method": "PUT",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/fraud-analyses",
@@ -203,7 +357,21 @@
           "method": "GET",
           "encoding": "no-op"
         }
-      ]
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
     },
     {
       "endpoint": "/api/fraud-analyses/order/{orderId}",
@@ -214,6 +382,61 @@
         {
           "host": ["http://fraud-detector-api:8080"],
           "url_pattern": "/fraud-analyses/order/{orderId}",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "/api/auth/login",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_headers": ["Content-Type"],
+      "backend": [
+        {
+          "host": ["http://user-api:8080"],
+          "url_pattern": "/auth/login",
+          "method": "POST",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/auth/refresh-token",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_headers": ["Content-Type"],
+      "backend": [
+        {
+          "host": ["http://user-api:8080"],
+          "url_pattern": "/auth/refresh-token",
+          "method": "POST",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/auth/.well-known/jwks.json",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "backend": [
+        {
+          "host": ["http://user-api:8080"],
+          "url_pattern": "/auth/.well-known/jwks.json",
           "method": "GET",
           "encoding": "no-op"
         }
