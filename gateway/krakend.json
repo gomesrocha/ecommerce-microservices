@@ -22,6 +22,76 @@
       ]
     },
     {
+      "endpoint": "/api/notifications",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_headers": ["Content-Type", "Authorization"],
+      "backend": [
+        {
+          "host": ["http://notification-service:8080"],
+          "url_pattern": "/notifications",
+          "method": "POST",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/notifications/{id}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://notification-service:8080"],
+          "url_pattern": "/notifications/{id}",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/notifications/user/{userId}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://notification-service:8080"],
+          "url_pattern": "/notifications/user/{userId}",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/notifications/user/{userId}/unread",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://notification-service:8080"],
+          "url_pattern": "/notifications/user/{userId}/unread",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/notifications/{id}/read",
+      "method": "PUT",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://notification-service:8080"],
+          "url_pattern": "/notifications/{id}/read",
+          "method": "PUT",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
       "endpoint": "/api/products",
       "method": "GET",
       "output_encoding": "no-op",
