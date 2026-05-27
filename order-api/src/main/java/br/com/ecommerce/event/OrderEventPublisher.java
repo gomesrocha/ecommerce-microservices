@@ -6,6 +6,7 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import org.jboss.logging.Logger;
 import br.com.ecommerce.notification.NotificationRequestEvent;
+import br.com.ecommerce.payment.PaymentRequestedEvent;
 
 @ApplicationScoped
 public class OrderEventPublisher {
@@ -110,5 +111,23 @@ public class OrderEventPublisher {
         );
 
         LOG.infof("NotificationRequested ORDER_REJECTED salvo na outbox para pedido %s", order.id);
+    }
+
+    public void publishPaymentRequested(Order order) {
+        PaymentRequestedEvent event = PaymentRequestedEvent.fromOrder(
+                order.id,
+                order.userId,
+                order.totalAmount
+        );
+
+        outboxService.saveEvent(
+                "Order",
+                order.id,
+                "PaymentRequested",
+                "payment.requested",
+                event
+        );
+
+        LOG.infof("PaymentRequested salvo na outbox para pedido %s", order.id);
     }
 }

@@ -58,6 +58,18 @@ public class Order {
     @Column(name = "stock_reason", length = 500)
     public String stockReason;
 
+    @Column(name = "payment_status", length = 50)
+    public String paymentStatus;
+
+    @Column(name = "payment_transaction_id", length = 100)
+    public String paymentTransactionId;
+
+    @Column(name = "payment_authorization_code", length = 100)
+    public String paymentAuthorizationCode;
+
+    @Column(name = "payment_reason", columnDefinition = "TEXT")
+    public String paymentReason;
+
     @OneToMany(
             mappedBy = "order",
             cascade = CascadeType.ALL,
