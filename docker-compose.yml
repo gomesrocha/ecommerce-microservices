@@ -236,8 +236,8 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_CHAT_MODEL: llama3.2:latest
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-    ports:
-      - "8100:8080"
+    expose:
+    - "8080"
     networks:
     - ecommerce-net
   api-gateway:
@@ -289,8 +289,8 @@ services:
       MAIL_FROM: no-reply@ecommerce.local
       NOTIFICATION_DEFAULT_EMAIL: cliente.demo@ecommerce.local
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-    ports:
-      - "8101:8080"
+    expose:
+    - "8080"
     networks:
       - ecommerce-net
   payment-service:
@@ -317,8 +317,8 @@ services:
       RABBITMQ_PASSWORD: ecommerce
       PAYMENT_GATEWAY_URL: http://payment-gateway-mock:8080
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-    ports:
-      - "8102:8080"
+    expose:
+      - "8080"
     networks:
       - ecommerce-net
   payment-gateway-mock:
