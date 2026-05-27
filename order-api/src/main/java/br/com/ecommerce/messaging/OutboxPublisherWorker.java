@@ -12,6 +12,7 @@ import org.jboss.logging.Logger;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeUnit;
 
 @ApplicationScoped
 public class OutboxPublisherWorker {
@@ -33,7 +34,11 @@ public class OutboxPublisherWorker {
     @Channel("order-canceled-out")
     Emitter<JsonObject> orderCanceledEmitter;
 
-    @Scheduled(every = "2s")
+    @Inject
+    @Channel("notifications-requested-out")
+    Emitter<JsonObject> notificationRequestedEmitter;
+
+    @Scheduled(every = "{app.outbox.poll-interval}", delay = 10, delayUnit = TimeUnit.SECONDS)
     void publishPendingEvents() {
         List<OutboxEvent> events = outboxService.listPending(20);
 
@@ -82,6 +87,7 @@ public class OutboxPublisherWorker {
             case "product.stock.reserve" -> stockReservationRequestedEmitter;
             case "order.created" -> orderCreatedEmitter;
             case "order.canceled" -> orderCanceledEmitter;
+            case "notifications.requested" -> notificationRequestedEmitter;
             default -> throw new IllegalArgumentException("Routing key não suportada pela outbox: " + routingKey);
         };
     }

@@ -152,16 +152,23 @@ public class OrderService {
             throw new BadRequestException("O pedido não pode ser cancelado no status atual");
         }
 
+        String reason = "Pedido cancelado pelo usuário";
+
         orderStateMachineService.transition(
-            order,
-            OrderStatus.CANCELED,
-            OrderStatusChangeTrigger.ORDER_CANCELED,
-            "Pedido cancelado"
+                order,
+                OrderStatus.CANCELED,
+                OrderStatusChangeTrigger.ORDER_CANCELED,
+                reason
         );
 
         orderRepository.flush();
 
         orderEventPublisher.publishOrderCanceled(order);
+
+        orderEventPublisher.publishOrderCanceledNotification(
+                order,
+                reason
+        );
 
         return OrderResponse.fromEntity(order);
     }
@@ -259,6 +266,7 @@ public class OrderService {
 
         return state.trim().toUpperCase();
     }
+
     @Transactional
     public OrderResponse approveFraud(Long orderId, BigDecimal riskScore, String reason) {
         Order order = getOrderOrThrow(orderId);
@@ -268,6 +276,10 @@ public class OrderService {
         }
 
         if (OrderStatus.REJECTED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        if (OrderStatus.CONFIRMED.equals(order.status)) {
             return OrderResponse.fromEntity(order);
         }
 
@@ -282,6 +294,8 @@ public class OrderService {
         );
 
         orderRepository.flush();
+
+        orderEventPublisher.publishOrderConfirmedNotification(order);
 
         return OrderResponse.fromEntity(order);
     }
@@ -298,6 +312,10 @@ public class OrderService {
             return OrderResponse.fromEntity(order);
         }
 
+        if (OrderStatus.REJECTED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
         order.fraudRiskScore = riskScore;
         order.fraudReason = reason;
 
@@ -309,6 +327,11 @@ public class OrderService {
         );
 
         orderRepository.flush();
+
+        orderEventPublisher.publishOrderRejectedNotification(
+                order,
+                reason
+        );
 
         return OrderResponse.fromEntity(order);
     }
@@ -359,6 +382,11 @@ public class OrderService {
         );
 
         orderRepository.flush();
+
+        orderEventPublisher.publishOrderRejectedNotification(
+                order,
+                reason
+        );
 
         return OrderResponse.fromEntity(order);
     }
