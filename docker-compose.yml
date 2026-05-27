@@ -293,6 +293,44 @@ services:
       - "8101:8080"
     networks:
       - ecommerce-net
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: ecommerce-payment-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      payment-gateway-mock:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    environment:
+      POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ecommerce
+      RABBITMQ_PASSWORD: ecommerce
+      PAYMENT_GATEWAY_URL: http://payment-gateway-mock:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    ports:
+      - "8102:8080"
+    networks:
+      - ecommerce-net
+  payment-gateway-mock:
+    image: wiremock/wiremock:3.13.2
+    container_name: ecommerce-payment-gateway-mock
+    ports:
+      - "8089:8080"
+    volumes:
+      - ./infra/wiremock/payment-gateway:/home/wiremock
+    command: ["--verbose", "--global-response-templating"]
+    networks:
+      - ecommerce-net
   mailpit:
     image: axllent/mailpit:latest
     container_name: ecommerce-mailpit

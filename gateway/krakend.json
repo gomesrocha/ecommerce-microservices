@@ -8,6 +8,62 @@
   "output_encoding": "no-op",
   "endpoints": [
     {
+      "endpoint": "/api/payments",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://payment-service:8080"],
+          "url_pattern": "/payments",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/payments/{id}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://payment-service:8080"],
+          "url_pattern": "/payments/{id}",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/payments/order/{orderId}",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://payment-service:8080"],
+          "url_pattern": "/payments/order/{orderId}",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
+      "endpoint": "/api/payments/simulate",
+      "method": "POST",
+      "output_encoding": "no-op",
+      "input_headers": ["Content-Type", "Authorization"],
+      "backend": [
+        {
+          "host": ["http://payment-service:8080"],
+          "url_pattern": "/payments/simulate",
+          "method": "POST",
+          "encoding": "no-op"
+        }
+      ]
+    },
+    {
       "endpoint": "/api/ai/chat",
       "method": "POST",
       "output_encoding": "no-op",
