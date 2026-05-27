@@ -152,16 +152,23 @@ public class OrderService {
             throw new BadRequestException("O pedido não pode ser cancelado no status atual");
         }
 
+        String reason = "Pedido cancelado pelo usuário";
+
         orderStateMachineService.transition(
-            order,
-            OrderStatus.CANCELED,
-            OrderStatusChangeTrigger.ORDER_CANCELED,
-            "Pedido cancelado"
+                order,
+                OrderStatus.CANCELED,
+                OrderStatusChangeTrigger.ORDER_CANCELED,
+                reason
         );
 
         orderRepository.flush();
 
         orderEventPublisher.publishOrderCanceled(order);
+
+        orderEventPublisher.publishOrderCanceledNotification(
+                order,
+                reason
+        );
 
         return OrderResponse.fromEntity(order);
     }
@@ -259,6 +266,7 @@ public class OrderService {
 
         return state.trim().toUpperCase();
     }
+
     @Transactional
     public OrderResponse approveFraud(Long orderId, BigDecimal riskScore, String reason) {
         Order order = getOrderOrThrow(orderId);
@@ -271,17 +279,103 @@ public class OrderService {
             return OrderResponse.fromEntity(order);
         }
 
+        if (OrderStatus.CONFIRMED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        if (OrderStatus.WAITING_PAYMENT.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
         order.fraudRiskScore = riskScore;
         order.fraudReason = reason;
 
         orderStateMachineService.transition(
                 order,
-                OrderStatus.CONFIRMED,
+                OrderStatus.WAITING_PAYMENT,
                 OrderStatusChangeTrigger.FRAUD_APPROVED,
                 reason
         );
 
+        order.paymentStatus = "REQUESTED";
+        order.paymentReason = "Pagamento solicitado após aprovação antifraude";
+
         orderRepository.flush();
+
+        orderEventPublisher.publishPaymentRequested(order);
+
+        return OrderResponse.fromEntity(order);
+    }
+
+    @Transactional
+    public OrderResponse approvePayment(
+            Long orderId,
+            String transactionId,
+            String authorizationCode,
+            String reason
+    ) {
+        Order order = getOrderOrThrow(orderId);
+
+        if (OrderStatus.CONFIRMED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        if (OrderStatus.REJECTED.equals(order.status) || OrderStatus.CANCELED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        order.paymentStatus = "APPROVED";
+        order.paymentTransactionId = transactionId;
+        order.paymentAuthorizationCode = authorizationCode;
+        order.paymentReason = reason;
+
+        orderStateMachineService.transition(
+                order,
+                OrderStatus.CONFIRMED,
+                OrderStatusChangeTrigger.PAYMENT_APPROVED,
+                reason
+        );
+
+        orderRepository.flush();
+
+        orderEventPublisher.publishOrderConfirmedNotification(order);
+
+        return OrderResponse.fromEntity(order);
+    }
+
+    @Transactional
+    public OrderResponse rejectPayment(
+            Long orderId,
+            String transactionId,
+            String reason
+    ) {
+        Order order = getOrderOrThrow(orderId);
+
+        if (OrderStatus.CONFIRMED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        if (OrderStatus.REJECTED.equals(order.status) || OrderStatus.CANCELED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
+        order.paymentStatus = "REJECTED";
+        order.paymentTransactionId = transactionId;
+        order.paymentReason = reason;
+
+        orderStateMachineService.transition(
+                order,
+                OrderStatus.REJECTED,
+                OrderStatusChangeTrigger.PAYMENT_REJECTED,
+                reason
+        );
+
+        orderRepository.flush();
+
+        orderEventPublisher.publishOrderRejectedNotification(
+                order,
+                reason
+        );
 
         return OrderResponse.fromEntity(order);
     }
@@ -298,6 +392,10 @@ public class OrderService {
             return OrderResponse.fromEntity(order);
         }
 
+        if (OrderStatus.REJECTED.equals(order.status)) {
+            return OrderResponse.fromEntity(order);
+        }
+
         order.fraudRiskScore = riskScore;
         order.fraudReason = reason;
 
@@ -309,6 +407,11 @@ public class OrderService {
         );
 
         orderRepository.flush();
+
+        orderEventPublisher.publishOrderRejectedNotification(
+                order,
+                reason
+        );
 
         return OrderResponse.fromEntity(order);
     }
@@ -359,6 +462,11 @@ public class OrderService {
         );
 
         orderRepository.flush();
+
+        orderEventPublisher.publishOrderRejectedNotification(
+                order,
+                reason
+        );
 
         return OrderResponse.fromEntity(order);
     }

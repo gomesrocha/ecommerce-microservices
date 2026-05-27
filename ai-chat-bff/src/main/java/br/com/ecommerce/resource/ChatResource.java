@@ -3,6 +3,7 @@ package br.com.ecommerce.resource;
 import br.com.ecommerce.assistant.EcommerceAssistant;
 import br.com.ecommerce.dto.ChatRequest;
 import br.com.ecommerce.dto.ChatResponse;
+import br.com.ecommerce.metrics.ChatMetricsService;
 import br.com.ecommerce.service.ChatGuardrailService;
 import br.com.ecommerce.service.ChatIntent;
 import br.com.ecommerce.service.ChatIntentService;
@@ -22,6 +23,8 @@ public class ChatResource {
 
     private static final Logger LOG = Logger.getLogger(ChatResource.class);
 
+    private static final String LLM_MODEL = "llama3.2:latest";
+
     @Inject
     EcommerceAssistant assistant;
 
@@ -34,11 +37,18 @@ public class ChatResource {
     @Inject
     EcommerceQueryService ecommerceQueryService;
 
+    @Inject
+    ChatMetricsService metricsService;
+
     @POST
     public ChatResponse chat(@Valid ChatRequest request) {
+        ChatIntent intent = intentService.detectIntent(request.message());
+
         ChatGuardrailService.GuardrailResult guardrail = guardrailService.validate(request.message());
 
         if (!guardrail.allowed()) {
+            metricsService.recordGuardrail(intent);
+
             return new ChatResponse(
                     guardrail.message(),
                     "guardrail",
@@ -46,55 +56,57 @@ public class ChatResource {
             );
         }
 
-        ChatIntent intent = intentService.detectIntent(request.message());
-
         LOG.infof("Mensagem recebida no ai-chat-bff. intent=%s, message=%s", intent, request.message());
 
         try {
             return switch (intent) {
-                case LIST_PRODUCTS -> new ChatResponse(
+                case LIST_PRODUCTS -> deterministicResponse(
                         ecommerceQueryService.listProducts(),
-                        "deterministic-router",
-                        LocalDateTime.now()
+                        intent
                 );
 
                 case GET_PRODUCT -> intentService.extractFirstNumber(request.message())
-                        .map(productId -> new ChatResponse(
+                        .map(productId -> deterministicResponse(
                                 ecommerceQueryService.getProduct(productId),
-                                "deterministic-router",
-                                LocalDateTime.now()
+                                intent
                         ))
-                        .orElseGet(() -> missingInfo("Informe o ID do produto que deseja consultar."));
+                        .orElseGet(() -> missingInfo("Informe o ID do produto que deseja consultar.", intent));
 
                 case ESTIMATE_DELIVERY -> intentService.extractRoute(request.message())
-                        .map(route -> new ChatResponse(
+                        .map(route -> deterministicResponse(
                                 ecommerceQueryService.estimateDelivery(
                                         route.originState(),
                                         route.destinationState(),
                                         route.totalItems()
                                 ),
-                                "deterministic-router",
-                                LocalDateTime.now()
+                                intent
                         ))
                         .orElseGet(() -> missingInfo(
-                                "Informe origem, destino e quantidade de itens. Exemplo: estime a entrega de 1 item saindo da BA para AL."
+                                "Informe origem, destino e quantidade de itens. Exemplo: estime a entrega de 1 item saindo da BA para AL.",
+                                intent
                         ));
 
                 case GET_ORDER -> intentService.extractFirstNumber(request.message())
-                        .map(orderId -> new ChatResponse(
+                        .map(orderId -> deterministicResponse(
                                 ecommerceQueryService.getOrder(orderId),
-                                "deterministic-router",
-                                LocalDateTime.now()
+                                intent
                         ))
-                        .orElseGet(() -> missingInfo("Informe o ID do pedido que deseja consultar."));
+                        .orElseGet(() -> missingInfo("Informe o ID do pedido que deseja consultar.", intent));
 
-                case GENERAL_CHAT -> new ChatResponse(
-                        assistant.chat(request.message()),
-                        "llama3.2:latest",
-                        LocalDateTime.now()
-                );
+                case GENERAL_CHAT -> {
+                    String answer = assistant.chat(request.message());
+                    metricsService.recordLlm(intent, LLM_MODEL);
+
+                    yield new ChatResponse(
+                            answer,
+                            LLM_MODEL,
+                            LocalDateTime.now()
+                    );
+                }
             };
         } catch (Exception exception) {
+            metricsService.recordError(intent);
+
             LOG.errorf(
                     exception,
                     "Erro ao processar mensagem no ai-chat-bff. intent=%s, message=%s",
@@ -116,7 +128,19 @@ public class ChatResource {
         return "ai-chat-bff UP";
     }
 
-    private ChatResponse missingInfo(String message) {
+    private ChatResponse deterministicResponse(String message, ChatIntent intent) {
+        metricsService.recordDeterministicRouter(intent);
+
+        return new ChatResponse(
+                message,
+                "deterministic-router",
+                LocalDateTime.now()
+        );
+    }
+
+    private ChatResponse missingInfo(String message, ChatIntent intent) {
+        metricsService.recordDeterministicRouter(intent);
+
         return new ChatResponse(
                 message,
                 "deterministic-router",

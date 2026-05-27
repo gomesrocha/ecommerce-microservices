@@ -19,13 +19,14 @@ public class OrderStateMachineService {
     OrderStatusHistoryRepository historyRepository;
 
     private static final Map<OrderStatus, Set<OrderStatus>> ALLOWED_TRANSITIONS = Map.of(
-            OrderStatus.CREATED, Set.of(OrderStatus.WAITING_STOCK, OrderStatus.CANCELED),
-            OrderStatus.WAITING_STOCK, Set.of(OrderStatus.WAITING_FRAUD, OrderStatus.REJECTED, OrderStatus.CANCELED),
-            OrderStatus.WAITING_FRAUD, Set.of(OrderStatus.CONFIRMED, OrderStatus.REJECTED, OrderStatus.CANCELED),
-            OrderStatus.CONFIRMED, Set.of(OrderStatus.CANCELED),
-            OrderStatus.CANCELED, Set.of(),
-            OrderStatus.REJECTED, Set.of()
-    );
+        OrderStatus.CREATED, Set.of(OrderStatus.WAITING_STOCK, OrderStatus.CANCELED),
+        OrderStatus.WAITING_STOCK, Set.of(OrderStatus.WAITING_FRAUD, OrderStatus.REJECTED, OrderStatus.CANCELED),
+        OrderStatus.WAITING_FRAUD, Set.of(OrderStatus.WAITING_PAYMENT, OrderStatus.REJECTED, OrderStatus.CANCELED),
+        OrderStatus.WAITING_PAYMENT, Set.of(OrderStatus.CONFIRMED, OrderStatus.REJECTED, OrderStatus.CANCELED),
+        OrderStatus.CONFIRMED, Set.of(OrderStatus.CANCELED),
+        OrderStatus.REJECTED, Set.of(),
+        OrderStatus.CANCELED, Set.of()
+);
 
     public void transition(
             Order order,

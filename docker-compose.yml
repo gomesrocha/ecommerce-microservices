@@ -236,8 +236,8 @@ services:
       OLLAMA_BASE_URL: http://host.docker.internal:11434
       OLLAMA_CHAT_MODEL: llama3.2:latest
       OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
-    ports:
-      - "8100:8080"
+    expose:
+    - "8080"
     networks:
     - ecommerce-net
   api-gateway:
@@ -262,6 +262,83 @@ services:
     networks:
       - ecommerce-net
 
+  notification-service:
+    build:
+      context: ./notification-service
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: ecommerce-notification-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    environment:
+      POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ecommerce
+      RABBITMQ_PASSWORD: ecommerce
+      MAIL_HOST: mailpit
+      MAIL_PORT: 1025
+      MAIL_FROM: no-reply@ecommerce.local
+      NOTIFICATION_DEFAULT_EMAIL: cliente.demo@ecommerce.local
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    expose:
+    - "8080"
+    networks:
+      - ecommerce-net
+  payment-service:
+    build:
+      context: ./payment-service
+      dockerfile: src/main/docker/Dockerfile.jvm
+    container_name: ecommerce-payment-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      payment-gateway-mock:
+        condition: service_started
+      otel-collector:
+        condition: service_started
+    environment:
+      POSTGRES_JDBC_URL: jdbc:postgresql://postgres:5432/ecommerce
+      POSTGRES_USER: ecommerce
+      POSTGRES_PASSWORD: ecommerce
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USERNAME: ecommerce
+      RABBITMQ_PASSWORD: ecommerce
+      PAYMENT_GATEWAY_URL: http://payment-gateway-mock:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+    expose:
+      - "8080"
+    networks:
+      - ecommerce-net
+  payment-gateway-mock:
+    image: wiremock/wiremock:3.13.2
+    container_name: ecommerce-payment-gateway-mock
+    ports:
+      - "8089:8080"
+    volumes:
+      - ./infra/wiremock/payment-gateway:/home/wiremock
+    command: ["--verbose", "--global-response-templating"]
+    networks:
+      - ecommerce-net
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: ecommerce-mailpit
+    ports:
+      - "8025:8025"
+      - "1025:1025"
+    networks:
+      - ecommerce-net
   otel-collector:
     image: otel/opentelemetry-collector-contrib:latest
     container_name: ecommerce-otel-collector
@@ -309,7 +386,10 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - ecommerce_grafana_data:/var/lib/grafana
-      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+      - ./infra/observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+        
     ports:
       - "3000:3000"
     depends_on:

@@ -1,0 +1,20 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/payments/authorize"
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "status": "APPROVED",
+      "provider": "WIREMOCK_FAKE_GATEWAY",
+      "transactionId": "fake_tx_123456",
+      "authorizationCode": "AUTH123456",
+      "reason": "Pagamento aprovado pelo gateway fake"
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    },
+    "transformers": ["response-template"]
+  }
+}
