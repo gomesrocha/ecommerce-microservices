@@ -1,0 +1,24 @@
+{
+  "request": {
+    "method": "POST",
+    "url": "/payments/authorize",
+    "bodyPatterns": [
+      {
+        "contains": "tok_rejected"
+      }
+    ]
+  },
+  "response": {
+    "status": 200,
+    "jsonBody": {
+      "status": "REJECTED",
+      "provider": "WIREMOCK_FAKE_GATEWAY",
+      "transactionId": "fake_tx_rejected",
+      "authorizationCode": null,
+      "reason": "Pagamento recusado pelo gateway fake"
+    },
+    "headers": {
+      "Content-Type": "application/json"
+    }
+  }
+}
