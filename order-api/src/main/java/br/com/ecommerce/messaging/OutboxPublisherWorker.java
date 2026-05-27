@@ -38,6 +38,10 @@ public class OutboxPublisherWorker {
     @Channel("notifications-requested-out")
     Emitter<JsonObject> notificationRequestedEmitter;
 
+    @Inject
+    @Channel("payment-requested-out")
+    Emitter<JsonObject> paymentRequestedEmitter;
+
     @Scheduled(every = "{app.outbox.poll-interval}", delay = 10, delayUnit = TimeUnit.SECONDS)
     void publishPendingEvents() {
         List<OutboxEvent> events = outboxService.listPending(20);
@@ -88,6 +92,7 @@ public class OutboxPublisherWorker {
             case "order.created" -> orderCreatedEmitter;
             case "order.canceled" -> orderCanceledEmitter;
             case "notifications.requested" -> notificationRequestedEmitter;
+            case "payment.requested" -> paymentRequestedEmitter;
             default -> throw new IllegalArgumentException("Routing key não suportada pela outbox: " + routingKey);
         };
     }

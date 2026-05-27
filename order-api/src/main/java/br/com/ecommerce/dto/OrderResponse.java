@@ -23,7 +23,11 @@ public record OrderResponse(
         String stockReason,
         List<OrderItemResponse> items,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        String paymentStatus,
+        String paymentTransactionId,
+        String paymentAuthorizationCode,
+        String paymentReason
 ) {
 
     public static OrderResponse fromEntity(Order order) {
@@ -46,7 +50,11 @@ public record OrderResponse(
                         .map(OrderItemResponse::fromEntity)
                         .toList(),
                 order.createdAt,
-                order.updatedAt
+                order.updatedAt,
+                order.paymentStatus,
+                order.paymentTransactionId,
+                order.paymentAuthorizationCode,
+                order.paymentReason
         );
     }
 }
