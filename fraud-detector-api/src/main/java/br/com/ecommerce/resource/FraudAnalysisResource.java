@@ -7,6 +7,8 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
 import java.util.List;
+import br.com.ecommerce.mlops.ModelInfoResponse;
+import br.com.ecommerce.mlops.ModelMetadataService;
 
 @Path("/fraud-analyses")
 @Produces(MediaType.APPLICATION_JSON)
@@ -15,6 +17,15 @@ public class FraudAnalysisResource {
 
     @Inject
     FraudAnalysisService service;
+
+    @Inject
+    ModelMetadataService modelMetadataService;
+
+    @GET
+    @Path("/model-info")
+    public ModelInfoResponse modelInfo() {
+        return modelMetadataService.getModelInfo();
+    }
 
     @GET
     public List<FraudAnalysisResponse> listAll() {
