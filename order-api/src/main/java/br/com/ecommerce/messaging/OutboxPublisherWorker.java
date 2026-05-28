@@ -12,7 +12,7 @@ import org.jboss.logging.Logger;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeUnit;
+
 
 @ApplicationScoped
 public class OutboxPublisherWorker {

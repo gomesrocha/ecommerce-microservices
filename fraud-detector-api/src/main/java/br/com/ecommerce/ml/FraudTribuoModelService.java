@@ -126,18 +126,10 @@ public class FraudTribuoModelService {
     }
 
     private double sanitizeScore(double value) {
-        if (Double.isNaN(value) || Double.isInfinite(value)) {
+        if (!Double.isFinite(value)) {
             return 0.5;
         }
 
-        if (value < 0.0) {
-            return 0.0;
-        }
-
-        if (value > 1.0) {
-            return 1.0;
-        }
-
-        return value;
+        return Math.min(1.0, Math.max(0.0, value));
     }
 }

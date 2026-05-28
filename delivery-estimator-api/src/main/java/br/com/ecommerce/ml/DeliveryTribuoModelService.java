@@ -106,20 +106,12 @@ public class DeliveryTribuoModelService {
     }
 
     private int sanitizeEstimatedDays(double value) {
-        if (Double.isNaN(value) || Double.isInfinite(value)) {
+        if (!Double.isFinite(value)) {
             return 10;
         }
 
         int rounded = (int) Math.round(value);
 
-        if (rounded < 1) {
-            return 1;
-        }
-
-        if (rounded > 90) {
-            return 90;
-        }
-
-        return rounded;
+        return Math.min(90, Math.max(1, rounded));
     }
 }
