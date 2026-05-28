@@ -17,10 +17,7 @@ import jakarta.ws.rs.core.Response;
 import br.com.ecommerce.event.StockReservationItem;
 import br.com.ecommerce.domain.StockReservation;
 import br.com.ecommerce.domain.StockReservationStatus;
-import br.com.ecommerce.event.StockReservationItem;
 import br.com.ecommerce.repository.StockReservationRepository;
-import jakarta.transaction.Transactional;
-import jakarta.ws.rs.BadRequestException;
 
 import java.util.List;
 import java.util.Optional;

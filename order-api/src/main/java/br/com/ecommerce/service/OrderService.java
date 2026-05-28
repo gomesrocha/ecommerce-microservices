@@ -3,7 +3,6 @@ package br.com.ecommerce.service;
 import br.com.ecommerce.client.DeliveryEstimateClient;
 import br.com.ecommerce.client.DeliveryEstimateClientRequest;
 import br.com.ecommerce.client.DeliveryEstimateClientResponse;
-import br.com.ecommerce.client.ProductClient;
 import br.com.ecommerce.client.ProductClientResponse;
 import br.com.ecommerce.domain.Order;
 import br.com.ecommerce.domain.OrderItem;
@@ -30,10 +29,7 @@ import br.com.ecommerce.domain.OrderStatusChangeTrigger;
 import br.com.ecommerce.repository.OrderStatusHistoryRepository;
 import br.com.ecommerce.dto.OrderStatusHistoryResponse;
 
-import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ServiceUnavailableException;
-import jakarta.ws.rs.WebApplicationException;
-import org.jboss.resteasy.reactive.ClientWebApplicationException;
 
 @ApplicationScoped
 public class OrderService {

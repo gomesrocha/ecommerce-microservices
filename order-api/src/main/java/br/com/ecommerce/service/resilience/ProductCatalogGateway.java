@@ -32,7 +32,6 @@ public class ProductCatalogGateway {
     )
     @CircuitBreaker(
             requestVolumeThreshold = 4,
-            failureRatio = 0.5,
             delay = 5000,
             skipOn = {WebApplicationException.class}
     )
