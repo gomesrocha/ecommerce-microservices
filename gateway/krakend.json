@@ -8,6 +8,62 @@
   "output_encoding": "no-op",
   "endpoints": [
     {
+      "endpoint": "/api/delivery-estimates/model-info",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://delivery-estimator-api:8080"],
+          "url_pattern": "/delivery-estimates/model-info",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
+    },
+    {
+      "endpoint": "/api/fraud-analyses/model-info",
+      "method": "GET",
+      "output_encoding": "no-op",
+      "input_headers": ["Authorization"],
+      "backend": [
+        {
+          "host": ["http://fraud-detector-api:8080"],
+          "url_pattern": "/fraud-analyses/model-info",
+          "method": "GET",
+          "encoding": "no-op"
+        }
+      ],
+      "extra_config": {
+        "auth/validator": {
+          "alg": "RS256",
+          "jwk_url": "http://user-api:8080/auth/.well-known/jwks.json",
+          "issuer": "user-api",
+          "cache": true,
+          "cache_duration": 900,
+          "disable_jwk_security": true,
+          "propagate_claims": [
+            ["sub", "X-User-Id"],
+            ["groups", "X-User-Roles"]
+          ]
+        }
+      }
+    },
+    {
       "endpoint": "/api/payments",
       "method": "GET",
       "output_encoding": "no-op",

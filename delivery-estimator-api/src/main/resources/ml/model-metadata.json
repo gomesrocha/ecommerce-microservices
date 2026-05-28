@@ -1,0 +1,32 @@
+{
+  "modelName": "delivery-tribuo",
+  "modelVersion": "delivery-tribuo-v1",
+  "domain": "DELIVERY",
+  "algorithm": "Tribuo Regression",
+  "framework": "Tribuo",
+  "status": "ACTIVE",
+  "dataset": {
+    "name": "olist_delivery_training_tribuo.csv",
+    "source": "Olist",
+    "type": "training",
+    "description": "Dataset processado a partir da base Olist para estimativa de prazo de entrega."
+  },
+  "metrics": {
+    "rmse": 7.848,
+    "mae": 5.414,
+    "r2": 0.207
+  },
+  "features": [
+    "originState",
+    "destinationState",
+    "totalItems"
+  ],
+  "target": "estimatedDeliveryDays",
+  "usedBy": [
+    "delivery-estimator-api"
+  ],
+  "modelPath": "ml/delivery-tribuo-v1.model",
+  "trainedAt": "2026-05-27T00:00:00",
+  "createdBy": "ml-model-builder",
+  "notes": "Modelo inicial de regressão para estimativa de entrega usando Tribuo."
+}
