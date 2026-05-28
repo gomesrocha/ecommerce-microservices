@@ -12,6 +12,9 @@ import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.MediaType;
 
 import java.util.List;
+import br.com.ecommerce.mlops.ModelInfoResponse;
+import br.com.ecommerce.mlops.ModelMetadataService;
+
 
 @Path("/delivery-estimates")
 @Produces(MediaType.APPLICATION_JSON)
@@ -24,12 +27,21 @@ public class DeliveryEstimateResource {
     @Inject
     DeliveryMetricsService metricsService;
 
+    @Inject
+    ModelMetadataService modelMetadataService;
+
     @POST
     @Path("/estimate")
     public EstimateDeliveryResponse estimate(@Valid EstimateDeliveryRequest request) {
         EstimateDeliveryResponse response = service.estimate(request);
         metricsService.recordPrediction(response);
         return response;
+    }
+
+    @GET
+    @Path("/model-info")
+    public ModelInfoResponse modelInfo() {
+        return modelMetadataService.getModelInfo();
     }
 
     @GET
