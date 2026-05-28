@@ -20,7 +20,28 @@
       "read": ".*"
     }
   ],
+  "policies": [
+    {
+      "vhost": "/",
+      "name": "ecommerce-dlx",
+      "pattern": "^(product\\.stock-reservation|order\\.stock-reserved|order\\.stock-rejected|fraud\\.order-created|order\\.fraud-approved|order\\.fraud-rejected|payment\\.requested|order\\.payment-approved|order\\.payment-rejected|notifications\\.requested)$",
+      "apply-to": "queues",
+      "definition": {
+        "dead-letter-exchange": "ecommerce.dlx"
+      },
+      "priority": 10
+    }
+  ],
   "exchanges": [
+    {
+      "name": "ecommerce.dlx",
+      "vhost": "/",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {}
+    },
     {
       "name": "ecommerce.events",
       "vhost": "/",
@@ -32,6 +53,104 @@
     }
   ],
   "queues": [
+    {
+      "name": "payment.requested",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.payment-approved",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.payment-rejected",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "notifications.requested",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "product.stock-reservation.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.stock-reserved.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.stock-rejected.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "fraud.order-created.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.fraud-approved.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.fraud-rejected.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "payment.requested.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.payment-approved.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "order.payment-rejected.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
+    {
+      "name": "notifications.requested.dlq",
+      "vhost": "/",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {}
+    },
     {
       "name": "orders.created",
       "vhost": "/",
@@ -125,6 +244,118 @@
     }
   ],
   "bindings": [
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "payment.requested",
+      "destination_type": "queue",
+      "routing_key": "payment.requested",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "order.payment-approved",
+      "destination_type": "queue",
+      "routing_key": "payment.approved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "order.payment-rejected",
+      "destination_type": "queue",
+      "routing_key": "payment.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.events",
+      "vhost": "/",
+      "destination": "notifications.requested",
+      "destination_type": "queue",
+      "routing_key": "notifications.requested",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "product.stock-reservation.dlq",
+      "destination_type": "queue",
+      "routing_key": "product.stock.reserve",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "order.stock-reserved.dlq",
+      "destination_type": "queue",
+      "routing_key": "stock.reserved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "order.stock-rejected.dlq",
+      "destination_type": "queue",
+      "routing_key": "stock.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "fraud.order-created.dlq",
+      "destination_type": "queue",
+      "routing_key": "order.created",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "order.fraud-approved.dlq",
+      "destination_type": "queue",
+      "routing_key": "fraud.approved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "order.fraud-rejected.dlq",
+      "destination_type": "queue",
+      "routing_key": "fraud.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "payment.requested.dlq",
+      "destination_type": "queue",
+      "routing_key": "payment.requested",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "order.payment-approved.dlq",
+      "destination_type": "queue",
+      "routing_key": "payment.approved",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "order.payment-rejected.dlq",
+      "destination_type": "queue",
+      "routing_key": "payment.rejected",
+      "arguments": {}
+    },
+    {
+      "source": "ecommerce.dlx",
+      "vhost": "/",
+      "destination": "notifications.requested.dlq",
+      "destination_type": "queue",
+      "routing_key": "notifications.requested",
+      "arguments": {}
+    },
     {
       "source": "ecommerce.events",
       "vhost": "/",
