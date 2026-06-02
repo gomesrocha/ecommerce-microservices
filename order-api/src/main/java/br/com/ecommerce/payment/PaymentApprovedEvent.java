@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 
 public record PaymentApprovedEvent(
         String eventId,
+        String correlationId,
         Long orderId,
         Long userId,
         BigDecimal amount,

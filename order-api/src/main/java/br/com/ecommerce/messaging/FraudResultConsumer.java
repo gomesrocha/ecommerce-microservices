@@ -2,6 +2,7 @@ package br.com.ecommerce.messaging;
 
 import br.com.ecommerce.event.FraudApprovedEvent;
 import br.com.ecommerce.event.FraudRejectedEvent;
+import br.com.ecommerce.observability.CorrelationIdContext;
 import br.com.ecommerce.service.OrderService;
 import io.smallrye.common.annotation.Blocking;
 import io.vertx.core.json.JsonObject;
@@ -27,7 +28,13 @@ public class FraudResultConsumer {
         try {
             FraudApprovedEvent event = message.getPayload().mapTo(FraudApprovedEvent.class);
 
-            LOG.infof("Evento FraudApproved recebido. orderId=%s", event.payload().orderId());
+            CorrelationIdContext.set(event.correlationId());
+
+            LOG.infof(
+                    "Evento FraudApproved recebido. orderId=%s, correlationId=%s",
+                    event.payload().orderId(),
+                    CorrelationIdContext.getOrCreate()
+            );
 
             orderService.approveFraud(
                     event.payload().orderId(),
@@ -36,9 +43,13 @@ public class FraudResultConsumer {
             );
 
             return message.ack();
+
         } catch (Exception exception) {
             LOG.error("Falha ao processar evento FraudApproved", exception);
             return message.nack(exception);
+
+        } finally {
+            CorrelationIdContext.clear();
         }
     }
 
@@ -48,7 +59,13 @@ public class FraudResultConsumer {
         try {
             FraudRejectedEvent event = message.getPayload().mapTo(FraudRejectedEvent.class);
 
-            LOG.infof("Evento FraudRejected recebido. orderId=%s", event.payload().orderId());
+            CorrelationIdContext.set(event.correlationId());
+
+            LOG.infof(
+                    "Evento FraudRejected recebido. orderId=%s, correlationId=%s",
+                    event.payload().orderId(),
+                    CorrelationIdContext.getOrCreate()
+            );
 
             orderService.rejectFraud(
                     event.payload().orderId(),
@@ -57,9 +74,13 @@ public class FraudResultConsumer {
             );
 
             return message.ack();
+
         } catch (Exception exception) {
             LOG.error("Falha ao processar evento FraudRejected", exception);
             return message.nack(exception);
+
+        } finally {
+            CorrelationIdContext.clear();
         }
     }
 }

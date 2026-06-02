@@ -30,13 +30,20 @@ public class OrderCreatedConsumer {
         try {
             OrderCreatedEvent event = message.getPayload().mapTo(OrderCreatedEvent.class);
 
-            LOG.infof("Evento OrderCreated recebido. orderId=%s", event.payload().orderId());
+            String correlationId = event.correlationId();
+
+            LOG.infof(
+                    "Evento OrderCreated recebido. orderId=%s, correlationId=%s",
+                    event.payload().orderId(),
+                    correlationId
+            );
 
             FraudAnalysis analysis = fraudAnalysisService.analyze(event);
 
-            fraudEventPublisher.publish(analysis);
+            fraudEventPublisher.publish(correlationId, analysis);
 
             return message.ack();
+
         } catch (Exception exception) {
             LOG.error("Falha ao processar evento OrderCreated", exception);
             return message.nack(exception);

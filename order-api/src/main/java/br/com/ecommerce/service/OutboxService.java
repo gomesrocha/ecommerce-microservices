@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
+import br.com.ecommerce.observability.CorrelationIdContext;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,6 +36,7 @@ public class OutboxService {
         OutboxEvent event = new OutboxEvent();
 
         event.eventId = UUID.randomUUID();
+        event.correlationId = CorrelationIdContext.getOrCreate();
         event.aggregateType = aggregateType;
         event.aggregateId = aggregateId;
         event.eventType = eventType;

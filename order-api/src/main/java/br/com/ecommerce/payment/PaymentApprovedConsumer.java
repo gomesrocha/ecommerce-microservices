@@ -1,5 +1,6 @@
 package br.com.ecommerce.payment;
 
+import br.com.ecommerce.observability.CorrelationIdContext;
 import br.com.ecommerce.service.OrderService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.vertx.core.buffer.Buffer;
@@ -28,6 +29,8 @@ public class PaymentApprovedConsumer {
         try {
             PaymentApprovedEvent event = objectMapper.readValue(payload, PaymentApprovedEvent.class);
 
+            CorrelationIdContext.set(event.correlationId());
+
             orderService.approvePayment(
                     event.orderId(),
                     event.transactionId(),
@@ -36,9 +39,10 @@ public class PaymentApprovedConsumer {
             );
 
             LOG.infof(
-                    "PaymentApproved processado no order-api. orderId=%s, transactionId=%s",
+                    "PaymentApproved processado no order-api. orderId=%s, transactionId=%s, correlationId=%s",
                     event.orderId(),
-                    event.transactionId()
+                    event.transactionId(),
+                    CorrelationIdContext.getOrCreate()
             );
 
         } catch (Exception exception) {
@@ -49,6 +53,9 @@ public class PaymentApprovedConsumer {
             );
 
             throw new IllegalStateException("Falha ao processar PaymentApproved", exception);
+
+        } finally {
+            CorrelationIdContext.clear();
         }
     }
 }

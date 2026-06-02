@@ -1,5 +1,7 @@
 package br.com.ecommerce.notification;
 
+import br.com.ecommerce.observability.CorrelationIdContext;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -7,6 +9,7 @@ import java.util.UUID;
 
 public record NotificationRequestEvent(
         String eventId,
+        String correlationId,
         String eventType,
         String aggregateType,
         Long aggregateId,
@@ -26,6 +29,7 @@ public record NotificationRequestEvent(
     ) {
         return new NotificationRequestEvent(
                 UUID.randomUUID().toString(),
+                CorrelationIdContext.getOrCreate(),
                 "ORDER_CONFIRMED",
                 "ORDER",
                 orderId,
@@ -38,7 +42,8 @@ public record NotificationRequestEvent(
                 Map.of(
                         "orderId", orderId,
                         "totalAmount", totalAmount,
-                        "customerState", customerState
+                        "customerState", customerState,
+                        "correlationId", CorrelationIdContext.getOrCreate()
                 )
         );
     }
@@ -50,6 +55,7 @@ public record NotificationRequestEvent(
     ) {
         return new NotificationRequestEvent(
                 UUID.randomUUID().toString(),
+                CorrelationIdContext.getOrCreate(),
                 "ORDER_CANCELED",
                 "ORDER",
                 orderId,
@@ -61,7 +67,8 @@ public record NotificationRequestEvent(
                 List.of("SCREEN", "EMAIL"),
                 Map.of(
                         "orderId", orderId,
-                        "reason", safe(reason)
+                        "reason", safe(reason),
+                        "correlationId", CorrelationIdContext.getOrCreate()
                 )
         );
     }
@@ -73,6 +80,7 @@ public record NotificationRequestEvent(
     ) {
         return new NotificationRequestEvent(
                 UUID.randomUUID().toString(),
+                CorrelationIdContext.getOrCreate(),
                 "ORDER_REJECTED",
                 "ORDER",
                 orderId,
@@ -84,7 +92,8 @@ public record NotificationRequestEvent(
                 List.of("SCREEN", "EMAIL"),
                 Map.of(
                         "orderId", orderId,
-                        "reason", safe(reason)
+                        "reason", safe(reason),
+                        "correlationId", CorrelationIdContext.getOrCreate()
                 )
         );
     }

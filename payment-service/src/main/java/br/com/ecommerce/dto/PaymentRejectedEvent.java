@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record PaymentRejectedEvent(
         String eventId,
+        String correlationId,
         Long orderId,
         Long userId,
         BigDecimal amount,
@@ -13,6 +14,7 @@ public record PaymentRejectedEvent(
         String reason
 ) {
     public static PaymentRejectedEvent from(
+            String correlationId,
             Long orderId,
             Long userId,
             BigDecimal amount,
@@ -21,6 +23,7 @@ public record PaymentRejectedEvent(
     ) {
         return new PaymentRejectedEvent(
                 UUID.randomUUID().toString(),
+                correlationId,
                 orderId,
                 userId,
                 amount,

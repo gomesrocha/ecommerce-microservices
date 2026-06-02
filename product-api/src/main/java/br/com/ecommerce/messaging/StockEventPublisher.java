@@ -26,24 +26,34 @@ public class StockEventPublisher {
     @Channel("stock-rejected-out")
     Emitter<StockRejectedEvent> stockRejectedEmitter;
 
-    public void publishReserved(Long orderId, Long userId, String reason) {
-        StockReservedEvent event = StockReservedEvent.of(orderId, userId, reason);
+    public void publishReserved(String correlationId, Long orderId, Long userId, String reason) {
+        StockReservedEvent event = StockReservedEvent.of(correlationId, orderId, userId, reason);
 
         OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
                 .withRoutingKey("stock.reserved")
                 .withTimestamp(ZonedDateTime.now())
                 .withHeader("eventType", "StockReserved")
                 .withHeader("sourceService", "product-api")
+                .withHeader("correlationId", correlationId)
                 .build();
 
         Message<StockReservedEvent> message = Message.of(
                 event,
                 () -> {
-                    LOG.infof("Evento StockReserved publicado para pedido %s", orderId);
+                    LOG.infof(
+                            "Evento StockReserved publicado para pedido %s. correlationId=%s",
+                            orderId,
+                            correlationId
+                    );
                     return CompletableFuture.completedFuture(null);
                 },
                 throwable -> {
-                    LOG.errorf(throwable, "Falha ao publicar StockReserved para pedido %s", orderId);
+                    LOG.errorf(
+                            throwable,
+                            "Falha ao publicar StockReserved para pedido %s. correlationId=%s",
+                            orderId,
+                            correlationId
+                    );
                     return CompletableFuture.completedFuture(null);
                 }
         ).addMetadata(metadata);
@@ -51,24 +61,34 @@ public class StockEventPublisher {
         stockReservedEmitter.send(message);
     }
 
-    public void publishRejected(Long orderId, Long userId, String reason) {
-        StockRejectedEvent event = StockRejectedEvent.of(orderId, userId, reason);
+    public void publishRejected(String correlationId, Long orderId, Long userId, String reason) {
+        StockRejectedEvent event = StockRejectedEvent.of(correlationId, orderId, userId, reason);
 
         OutgoingRabbitMQMetadata metadata = new OutgoingRabbitMQMetadata.Builder()
                 .withRoutingKey("stock.rejected")
                 .withTimestamp(ZonedDateTime.now())
                 .withHeader("eventType", "StockRejected")
                 .withHeader("sourceService", "product-api")
+                .withHeader("correlationId", correlationId)
                 .build();
 
         Message<StockRejectedEvent> message = Message.of(
                 event,
                 () -> {
-                    LOG.infof("Evento StockRejected publicado para pedido %s", orderId);
+                    LOG.infof(
+                            "Evento StockRejected publicado para pedido %s. correlationId=%s",
+                            orderId,
+                            correlationId
+                    );
                     return CompletableFuture.completedFuture(null);
                 },
                 throwable -> {
-                    LOG.errorf(throwable, "Falha ao publicar StockRejected para pedido %s", orderId);
+                    LOG.errorf(
+                            throwable,
+                            "Falha ao publicar StockRejected para pedido %s. correlationId=%s",
+                            orderId,
+                            correlationId
+                    );
                     return CompletableFuture.completedFuture(null);
                 }
         ).addMetadata(metadata);

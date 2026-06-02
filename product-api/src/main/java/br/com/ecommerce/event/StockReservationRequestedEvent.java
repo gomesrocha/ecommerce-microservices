@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record StockReservationRequestedEvent(
         UUID eventId,
+        String correlationId,
         String eventType,
         String sourceService,
         LocalDateTime occurredAt,

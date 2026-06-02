@@ -5,6 +5,7 @@ import java.util.UUID;
 
 public record PaymentApprovedEvent(
         String eventId,
+        String correlationId,
         Long orderId,
         Long userId,
         BigDecimal amount,
@@ -14,6 +15,7 @@ public record PaymentApprovedEvent(
         String reason
 ) {
     public static PaymentApprovedEvent from(
+            String correlationId,
             Long orderId,
             Long userId,
             BigDecimal amount,
@@ -23,6 +25,7 @@ public record PaymentApprovedEvent(
     ) {
         return new PaymentApprovedEvent(
                 UUID.randomUUID().toString(),
+                correlationId,
                 orderId,
                 userId,
                 amount,
