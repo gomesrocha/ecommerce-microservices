@@ -16,6 +16,9 @@ public class OutboxEvent {
     @Column(name = "event_id", nullable = false)
     public UUID eventId;
 
+    @Column(name = "correlation_id", length = 100)
+    public String correlationId;
+
     @Column(name = "aggregate_type", nullable = false, length = 80)
     public String aggregateType;
 

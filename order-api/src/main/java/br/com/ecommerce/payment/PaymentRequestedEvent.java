@@ -1,10 +1,13 @@
 package br.com.ecommerce.payment;
 
+import br.com.ecommerce.observability.CorrelationIdContext;
+
 import java.math.BigDecimal;
 import java.util.UUID;
 
 public record PaymentRequestedEvent(
         String eventId,
+        String correlationId,
         Long orderId,
         Long userId,
         BigDecimal amount,
@@ -20,6 +23,7 @@ public record PaymentRequestedEvent(
     ) {
         return new PaymentRequestedEvent(
                 UUID.randomUUID().toString(),
+                CorrelationIdContext.getOrCreate(),
                 orderId,
                 userId,
                 amount,
