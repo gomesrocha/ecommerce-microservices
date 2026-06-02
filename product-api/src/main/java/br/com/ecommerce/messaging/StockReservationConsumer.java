@@ -32,7 +32,13 @@ public class StockReservationConsumer {
         try {
             event = message.getPayload().mapTo(StockReservationRequestedEvent.class);
 
-            LOG.infof("Evento StockReservationRequested recebido. orderId=%s", event.payload().orderId());
+            String correlationId = event.correlationId();
+
+            LOG.infof(
+                    "Evento StockReservationRequested recebido. orderId=%s, correlationId=%s",
+                    event.payload().orderId(),
+                    correlationId
+            );
 
             StockReservationResult result = productService.reserveStock(
                     event.payload().orderId(),
@@ -41,12 +47,14 @@ public class StockReservationConsumer {
 
             if (result.reserved()) {
                 stockEventPublisher.publishReserved(
+                        correlationId,
                         event.payload().orderId(),
                         event.payload().userId(),
                         result.reason()
                 );
             } else {
                 stockEventPublisher.publishRejected(
+                        correlationId,
                         event.payload().orderId(),
                         event.payload().userId(),
                         result.reason()
@@ -54,11 +62,13 @@ public class StockReservationConsumer {
             }
 
             return message.ack();
+
         } catch (Exception exception) {
             LOG.error("Falha ao reservar estoque", exception);
 
             if (event != null && event.payload() != null) {
                 stockEventPublisher.publishRejected(
+                        event.correlationId(),
                         event.payload().orderId(),
                         event.payload().userId(),
                         exception.getMessage()

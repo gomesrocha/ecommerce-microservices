@@ -31,9 +31,10 @@ public class PaymentEventPublisher {
         paymentApprovedEmitter.send(payload);
 
         LOG.infof(
-                "Evento payment.approved publicado. orderId=%s, transactionId=%s",
+                "Evento payment.approved publicado. orderId=%s, transactionId=%s, correlationId=%s",
                 event.orderId(),
-                event.transactionId()
+                event.transactionId(),
+                event.correlationId()
         );
     }
 
@@ -42,9 +43,10 @@ public class PaymentEventPublisher {
         paymentRejectedEmitter.send(payload);
 
         LOG.infof(
-                "Evento payment.rejected publicado. orderId=%s, transactionId=%s",
+                "Evento payment.rejected publicado. orderId=%s, transactionId=%s, correlationId=%s",
                 event.orderId(),
-                event.transactionId()
+                event.transactionId(),
+                event.correlationId()
         );
     }
 

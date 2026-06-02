@@ -7,15 +7,17 @@ import java.util.UUID;
 
 public record FraudRejectedEvent(
         UUID eventId,
+        String correlationId,
         String eventType,
         String sourceService,
         LocalDateTime occurredAt,
         FraudRejectedPayload payload
 ) {
 
-    public static FraudRejectedEvent fromEntity(FraudAnalysis analysis) {
+    public static FraudRejectedEvent fromEntity(String correlationId, FraudAnalysis analysis) {
         return new FraudRejectedEvent(
                 UUID.randomUUID(),
+                correlationId,
                 "FraudRejected",
                 "fraud-detector-api",
                 LocalDateTime.now(),

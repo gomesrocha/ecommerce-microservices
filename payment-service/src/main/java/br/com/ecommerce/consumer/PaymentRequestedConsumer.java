@@ -31,9 +31,10 @@ public class PaymentRequestedConsumer {
             paymentService.process(event);
 
             LOG.infof(
-                    "PaymentRequested processado com sucesso. orderId=%s, amount=%s",
+                    "PaymentRequested processado com sucesso. orderId=%s, amount=%s, correlationId=%s",
                     event.orderId(),
-                    event.amount()
+                    event.amount(),
+                    event.correlationId()
             );
 
         } catch (Exception exception) {

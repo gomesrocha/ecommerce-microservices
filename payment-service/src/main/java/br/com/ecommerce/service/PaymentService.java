@@ -61,7 +61,7 @@ public class PaymentService {
 
         repository.persist(payment);
 
-        authorize(payment);
+        authorize(event, payment);
 
         return PaymentResponse.fromEntity(payment);
     }
@@ -87,7 +87,7 @@ public class PaymentService {
         return PaymentResponse.fromEntity(payment);
     }
 
-    private void authorize(Payment payment) {
+    private void authorize(PaymentRequestedEvent event, Payment payment) {
         try {
             payment.attempts = payment.attempts + 1;
             payment.updatedAt = LocalDateTime.now();
@@ -115,18 +115,20 @@ public class PaymentService {
                 payment.approvedAt = LocalDateTime.now();
 
                 publisher.publishApproved(PaymentApprovedEvent.from(
-                        payment.orderId,
-                        payment.userId,
-                        payment.amount,
-                        payment.providerTransactionId,
-                        payment.authorizationCode,
-                        payment.reason
+                    event.correlationId(),
+                    payment.orderId,
+                    payment.userId,
+                    payment.amount,
+                    payment.providerTransactionId,
+                    payment.authorizationCode,
+                    payment.reason
                 ));
             } else {
                 payment.status = PaymentStatus.REJECTED;
                 payment.rejectedAt = LocalDateTime.now();
 
                 publisher.publishRejected(PaymentRejectedEvent.from(
+                        event.correlationId(),
                         payment.orderId,
                         payment.userId,
                         payment.amount,

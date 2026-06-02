@@ -2,6 +2,7 @@ package br.com.ecommerce.messaging;
 
 import br.com.ecommerce.event.StockRejectedEvent;
 import br.com.ecommerce.event.StockReservedEvent;
+import br.com.ecommerce.observability.CorrelationIdContext;
 import br.com.ecommerce.service.OrderService;
 import io.smallrye.common.annotation.Blocking;
 import io.vertx.core.json.JsonObject;
@@ -27,7 +28,13 @@ public class StockResultConsumer {
         try {
             StockReservedEvent event = message.getPayload().mapTo(StockReservedEvent.class);
 
-            LOG.infof("Evento StockReserved recebido. orderId=%s", event.payload().orderId());
+            CorrelationIdContext.set(event.correlationId());
+
+            LOG.infof(
+                    "Evento StockReserved recebido. orderId=%s, correlationId=%s",
+                    event.payload().orderId(),
+                    CorrelationIdContext.getOrCreate()
+            );
 
             orderService.markStockReserved(
                     event.payload().orderId(),
@@ -35,9 +42,13 @@ public class StockResultConsumer {
             );
 
             return message.ack();
+
         } catch (Exception exception) {
             LOG.error("Falha ao processar evento StockReserved", exception);
             return message.nack(exception);
+
+        } finally {
+            CorrelationIdContext.clear();
         }
     }
 
@@ -47,7 +58,13 @@ public class StockResultConsumer {
         try {
             StockRejectedEvent event = message.getPayload().mapTo(StockRejectedEvent.class);
 
-            LOG.infof("Evento StockRejected recebido. orderId=%s", event.payload().orderId());
+            CorrelationIdContext.set(event.correlationId());
+
+            LOG.infof(
+                    "Evento StockRejected recebido. orderId=%s, correlationId=%s",
+                    event.payload().orderId(),
+                    CorrelationIdContext.getOrCreate()
+            );
 
             orderService.markStockRejected(
                     event.payload().orderId(),
@@ -55,9 +72,13 @@ public class StockResultConsumer {
             );
 
             return message.ack();
+
         } catch (Exception exception) {
             LOG.error("Falha ao processar evento StockRejected", exception);
             return message.nack(exception);
+
+        } finally {
+            CorrelationIdContext.clear();
         }
     }
 }

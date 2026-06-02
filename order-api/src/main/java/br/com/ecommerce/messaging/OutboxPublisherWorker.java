@@ -13,7 +13,6 @@ import org.jboss.logging.Logger;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-
 @ApplicationScoped
 public class OutboxPublisherWorker {
 
@@ -68,18 +67,20 @@ public class OutboxPublisherWorker {
             outboxService.markPublished(event.id);
 
             LOG.infof(
-                    "Evento da outbox publicado. id=%s, eventType=%s, routingKey=%s",
+                    "Evento da outbox publicado. id=%s, eventType=%s, routingKey=%s, correlationId=%s",
                     event.id,
                     event.eventType,
-                    event.routingKey
+                    event.routingKey,
+                    event.correlationId
             );
         } catch (Exception exception) {
             LOG.errorf(
                     exception,
-                    "Falha ao publicar evento da outbox. id=%s, eventType=%s, routingKey=%s",
+                    "Falha ao publicar evento da outbox. id=%s, eventType=%s, routingKey=%s, correlationId=%s",
                     event.id,
                     event.eventType,
-                    event.routingKey
+                    event.routingKey,
+                    event.correlationId
             );
 
             outboxService.markFailed(event.id, exception);

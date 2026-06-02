@@ -183,7 +183,8 @@
       "output_encoding": "no-op",
       "input_headers": [
         "Content-Type",
-        "Authorization"
+        "Authorization", 
+        "X-Correlation-Id"
       ],
       "backend": [
         {
@@ -222,7 +223,8 @@
       "output_encoding": "no-op",
       "input_headers": [
         "Content-Type",
-        "Authorization"
+        "Authorization", 
+        "X-Correlation-Id"
       ],
       "backend": [
         {
@@ -261,7 +263,8 @@
       "output_encoding": "no-op",
       "input_headers": [
         "Content-Type",
-        "Authorization"
+        "Authorization", 
+        "X-Correlation-Id"
       ],
       "backend": [
         {
@@ -495,7 +498,8 @@
       "output_encoding": "no-op",
       "input_headers": [
         "Content-Type",
-        "Authorization"
+        "Authorization", 
+        "X-Correlation-Id"
       ],
       "backend": [
         {
@@ -693,7 +697,8 @@
       "output_encoding": "no-op",
       "input_headers": [
         "Content-Type",
-        "Authorization"
+        "Authorization", 
+        "X-Correlation-Id"
       ],
       "backend": [
         {
@@ -810,7 +815,8 @@
       "output_encoding": "no-op",
       "input_headers": [
         "Content-Type",
-        "Authorization"
+        "Authorization", 
+        "X-Correlation-Id"
       ],
       "backend": [
         {

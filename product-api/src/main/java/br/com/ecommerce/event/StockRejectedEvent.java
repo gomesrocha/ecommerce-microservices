@@ -5,15 +5,22 @@ import java.util.UUID;
 
 public record StockRejectedEvent(
         UUID eventId,
+        String correlationId,
         String eventType,
         String sourceService,
         LocalDateTime occurredAt,
         StockRejectedPayload payload
 ) {
 
-    public static StockRejectedEvent of(Long orderId, Long userId, String reason) {
+    public static StockRejectedEvent of(
+            String correlationId,
+            Long orderId,
+            Long userId,
+            String reason
+    ) {
         return new StockRejectedEvent(
                 UUID.randomUUID(),
+                correlationId,
                 "StockRejected",
                 "product-api",
                 LocalDateTime.now(),
