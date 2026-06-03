@@ -5,5 +5,6 @@ public enum ChatIntent {
     GET_PRODUCT,
     ESTIMATE_DELIVERY,
     GET_ORDER,
+    CREATE_ORDER,
     GENERAL_CHAT
 }
