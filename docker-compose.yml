@@ -377,7 +377,35 @@ services:
       - "9090:9090"
     networks:
       - ecommerce-net
+  loki:
+    image: grafana/loki:3.7.0
+    container_name: ecommerce-loki
+    command: -config.file=/etc/loki/loki-config.yml
+    volumes:
+      - ./infra/observability/loki/loki-config.yml:/etc/loki/loki-config.yml:ro
+      - loki-data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - ecommerce-net
 
+  alloy:
+    image: grafana/alloy:latest
+    container_name: ecommerce-alloy
+    command:
+      - runs
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./infra/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    ports:
+      - "12345:12345"
+    depends_on:
+      - loki
+    networks:
+      - ecommerce-net
   grafana:
     image: grafana/grafana:latest
     container_name: ecommerce-grafana
@@ -395,6 +423,7 @@ services:
     depends_on:
       - prometheus
       - tempo
+      - loki
     networks:
       - ecommerce-net
 volumes:
@@ -404,6 +433,7 @@ volumes:
   ecommerce_prometheus_data:
   ecommerce_grafana_data:
   ecommerce_ollama_data:
+  loki-data:
 
 networks:
   ecommerce-net:
