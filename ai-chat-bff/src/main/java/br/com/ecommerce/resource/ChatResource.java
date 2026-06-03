@@ -10,11 +10,17 @@ import br.com.ecommerce.service.ChatIntentService;
 import br.com.ecommerce.service.EcommerceQueryService;
 import jakarta.inject.Inject;
 import jakarta.validation.Valid;
-import jakarta.ws.rs.*;
+import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.HeaderParam;
+import jakarta.ws.rs.POST;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.core.MediaType;
 import org.jboss.logging.Logger;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Path("/chat")
 @Produces(MediaType.APPLICATION_JSON)
@@ -24,6 +30,7 @@ public class ChatResource {
     private static final Logger LOG = Logger.getLogger(ChatResource.class);
 
     private static final String LLM_MODEL = "llama3.2:latest";
+    private static final Long DEFAULT_USER_ID = 1L;
 
     @Inject
     EcommerceAssistant assistant;
@@ -41,7 +48,11 @@ public class ChatResource {
     ChatMetricsService metricsService;
 
     @POST
-    public ChatResponse chat(@Valid ChatRequest request) {
+    public ChatResponse chat(
+            @Valid ChatRequest request,
+            @HeaderParam("X-User-Id") String userIdHeader,
+            @HeaderParam("X-Correlation-Id") String correlationIdHeader
+    ) {
         ChatIntent intent = intentService.detectIntent(request.message());
 
         ChatGuardrailService.GuardrailResult guardrail = guardrailService.validate(request.message());
@@ -92,6 +103,20 @@ public class ChatResource {
                                 intent
                         ))
                         .orElseGet(() -> missingInfo("Informe o ID do pedido que deseja consultar.", intent));
+
+                case CREATE_ORDER -> intentService.extractOrderDraft(request.message())
+                        .map(draft -> deterministicResponse(
+                                ecommerceQueryService.createOrderWithExplicitConfirmation(
+                                        draft,
+                                        resolveUserId(userIdHeader),
+                                        resolveCorrelationId(correlationIdHeader)
+                                ),
+                                intent
+                        ))
+                        .orElseGet(() -> missingInfo(
+                                "Para criar um pedido, informe produto, quantidade e estado de entrega. Exemplo: quero criar pedido do produto 47 com 1 item para SE.",
+                                intent
+                        ));
 
                 case GENERAL_CHAT -> {
                     String answer = assistant.chat(request.message());
@@ -146,5 +171,25 @@ public class ChatResource {
                 "deterministic-router",
                 LocalDateTime.now()
         );
+    }
+
+    private Long resolveUserId(String userIdHeader) {
+        if (userIdHeader == null || userIdHeader.isBlank()) {
+            return DEFAULT_USER_ID;
+        }
+
+        try {
+            return Long.parseLong(userIdHeader);
+        } catch (NumberFormatException exception) {
+            return DEFAULT_USER_ID;
+        }
+    }
+
+    private String resolveCorrelationId(String correlationIdHeader) {
+        if (correlationIdHeader == null || correlationIdHeader.isBlank()) {
+            return UUID.randomUUID().toString();
+        }
+
+        return correlationIdHeader;
     }
 }

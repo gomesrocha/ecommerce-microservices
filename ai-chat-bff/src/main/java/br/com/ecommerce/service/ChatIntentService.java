@@ -25,6 +25,10 @@ public class ChatIntentService {
     public ChatIntent detectIntent(String message) {
         String text = normalize(message);
 
+        if (isCreateOrderIntent(text)) {
+            return ChatIntent.CREATE_ORDER;
+        }
+
         if (containsAny(text, "listar produtos", "quais produtos", "produtos disponiveis", "ver produtos")) {
             return ChatIntent.LIST_PRODUCTS;
         }
@@ -65,6 +69,123 @@ public class ChatIntentService {
                     states.get(1),
                     extractTotalItems(message)
             ));
+        }
+
+        return Optional.empty();
+    }
+
+    public Optional<OrderDraft> extractOrderDraft(String message) {
+        Optional<Long> productId = extractProductId(message);
+        Optional<String> customerState = extractCustomerState(message);
+
+        if (productId.isEmpty() || customerState.isEmpty()) {
+            return Optional.empty();
+        }
+
+        return Optional.of(new OrderDraft(
+                productId.get(),
+                extractOrderQuantity(message),
+                customerState.get(),
+                hasExplicitConfirmation(message)
+        ));
+    }
+
+    private boolean isCreateOrderIntent(String normalized) {
+        return containsAny(
+                normalized,
+                "criar pedido",
+                "fazer pedido",
+                "fechar pedido",
+                "finalizar pedido",
+                "comprar produto",
+                "quero comprar",
+                "confirmo criar pedido",
+                "confirmar pedido",
+                "confirmo o pedido"
+        );
+    }
+
+    public boolean hasExplicitConfirmation(String message) {
+        String normalized = normalize(message);
+
+        return containsAny(
+                normalized,
+                "confirmo criar pedido",
+                "confirmo o pedido",
+                "confirmo a compra",
+                "confirmar pedido",
+                "pode criar o pedido",
+                "pode fechar o pedido",
+                "sim, criar pedido",
+                "sim criar pedido",
+                "fechar pedido",
+                "finalizar pedido"
+        );
+    }
+
+    private Optional<Long> extractProductId(String message) {
+        String normalized = normalize(message);
+
+        List<Pattern> patterns = List.of(
+                Pattern.compile("\\bproduto\\s+(\\d+)\\b"),
+                Pattern.compile("\\bproduto\\s+id\\s+(\\d+)\\b"),
+                Pattern.compile("\\bid\\s+do\\s+produto\\s+(\\d+)\\b"),
+                Pattern.compile("\\bproduct\\s+(\\d+)\\b")
+        );
+
+        for (Pattern pattern : patterns) {
+            Matcher matcher = pattern.matcher(normalized);
+
+            if (matcher.find()) {
+                return Optional.of(Long.parseLong(matcher.group(1)));
+            }
+        }
+
+        return extractFirstNumber(message);
+    }
+
+    private Integer extractOrderQuantity(String message) {
+        String normalized = normalize(message);
+
+        List<Pattern> patterns = List.of(
+                Pattern.compile("\\b(\\d+)\\s+(item|itens|unidade|unidades)\\b"),
+                Pattern.compile("\\bquantidade\\s+(\\d+)\\b"),
+                Pattern.compile("\\bqtd\\s+(\\d+)\\b")
+        );
+
+        for (Pattern pattern : patterns) {
+            Matcher matcher = pattern.matcher(normalized);
+
+            if (matcher.find()) {
+                return Integer.parseInt(matcher.group(1));
+            }
+        }
+
+        return 1;
+    }
+
+    private Optional<String> extractCustomerState(String message) {
+        String upper = removeAccents(message).toUpperCase(Locale.ROOT);
+
+        List<Pattern> patterns = List.of(
+                Pattern.compile("\\bPARA\\s+([A-Z]{2})\\b"),
+                Pattern.compile("\\bDESTINO\\s+([A-Z]{2})\\b"),
+                Pattern.compile("\\bCLIENTE\\s+([A-Z]{2})\\b"),
+                Pattern.compile("\\bESTADO\\s+([A-Z]{2})\\b")
+        );
+
+        for (Pattern pattern : patterns) {
+            Matcher matcher = pattern.matcher(upper);
+
+            if (matcher.find() && BRAZIL_STATES.contains(matcher.group(1))) {
+                return Optional.of(matcher.group(1));
+            }
+        }
+
+        List<String> states = extractBrazilStatesInOrder(upper);
+
+        if (!states.isEmpty()) {
+            return Optional.of(states.get(states.size() - 1));
         }
 
         return Optional.empty();
@@ -129,6 +250,14 @@ public class ChatIntentService {
             String originState,
             String destinationState,
             Integer totalItems
+    ) {
+    }
+
+    public record OrderDraft(
+            Long productId,
+            Integer quantity,
+            String customerState,
+            boolean confirmed
     ) {
     }
 }
