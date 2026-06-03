@@ -1,28 +1,29 @@
 {
-  "generatedAt": "2026-06-03T12:39:19.003112386Z",
+  "generatedAt": "2026-06-03T17:15:08.301384118Z",
   "models": [
     {
-      "modelName": "delivery-tribuo",
-      "modelVersion": "delivery-tribuo-v1",
-      "domain": "DELIVERY",
-      "algorithm": "Tribuo CART Regression",
+      "modelName": "fraud-tribuo",
+      "modelVersion": "fraud-tribuo-v1",
+      "domain": "FRAUD",
+      "algorithm": "Tribuo Classification",
       "framework": "Tribuo",
-      "datasetName": "olist_delivery_training_tribuo.csv",
-      "inputPath": "../delivery-estimator-api/src/main/resources/ml/olist_delivery_training_tribuo.csv",
-      "outputPath": "../models/delivery/delivery-tribuo-v1.model",
+      "datasetName": "olist_fraud_risk_training_tribuo.csv",
+      "inputPath": "../data/fraud/olist/processed/olist_fraud_risk_training_tribuo.csv",
+      "outputPath": "../models/fraud/fraud-tribuo-v1.model",
       "status": "ACTIVE",
-      "trainedAt": "2026-06-03T12:39:19.000184947Z",
-      "trainSize": 77114,
-      "testSize": 19279,
-      "totalRecords": 96393,
-      "features": ["items_quantity", "log_items_quantity", "same_state", "same_region", "is_interstate", "route_distance_km", "distance_local", "distance_short", "distance_medium", "distance_long", "distance_very_long", "origin_region_NORTE", "origin_region_NORDESTE", "origin_region_CENTRO_OESTE", "origin_region_SUDESTE", "origin_region_SUL", "destination_region_NORTE", "destination_region_NORDESTE", "destination_region_CENTRO_OESTE", "destination_region_SUDESTE", "destination_region_SUL", "origin_AC", "origin_AL", "origin_AM", "origin_AP", "origin_BA", "origin_CE", "origin_DF", "origin_ES", "origin_GO", "origin_MA", "origin_MG", "origin_MS", "origin_MT", "origin_PA", "origin_PB", "origin_PE", "origin_PI", "origin_PR", "origin_RJ", "origin_RN", "origin_RO", "origin_RR", "origin_RS", "origin_SC", "origin_SE", "origin_SP", "origin_TO", "destination_AC", "destination_AL", "destination_AM", "destination_AP", "destination_BA", "destination_CE", "destination_DF", "destination_ES", "destination_GO", "destination_MA", "destination_MG", "destination_MS", "destination_MT", "destination_PA", "destination_PB", "destination_PE", "destination_PI", "destination_PR", "destination_RJ", "destination_RN", "destination_RO", "destination_RR", "destination_RS", "destination_SC", "destination_SE", "destination_SP", "destination_TO"],
-      "target": "delivery_days",
+      "trainedAt": "2026-06-03T17:15:08.300206757Z",
+      "trainSize": 0,
+      "testSize": 0,
+      "totalRecords": 80000,
+      "features": ["totalAmount", "totalItems", "customerState", "estimatedDeliveryDays"],
+      "target": "riskLabel",
       "metrics": {
-        "rmse": 7.7333319066485116,
-        "mae": 5.313625128899415,
-        "r2": 0.22959112074307886
+        "precision": "not_available",
+        "f1": "not_available",
+        "recall": "not_available",
+        "accuracy": "not_available"
       },
-      "notes": "Modelo de regressão para estimativa de prazo de entrega usando dados derivados da base Olist."
+      "notes": "Modelo de classificação de risco de fraude usando dataset sintético baseado em atributos do ecommerce e da base Olist. Métricas detalhadas serão extraídas em uma evolução do FraudModelTrainer."
     }
   ]
 }

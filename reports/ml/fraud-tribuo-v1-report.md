@@ -10,7 +10,7 @@
 | Algoritmo | Tribuo Classification |
 | Framework | Tribuo |
 | Status | ACTIVE |
-| Treinado em | 2026-05-28T14:15:28.666674848Z |
+| Treinado em | 2026-06-03T17:15:08.300206757Z |
 | Dataset | olist_fraud_risk_training_tribuo.csv |
 | Arquivo de entrada | `../data/fraud/olist/processed/olist_fraud_risk_training_tribuo.csv` |
 | Modelo gerado | `../models/fraud/fraud-tribuo-v1.model` |
@@ -36,10 +36,10 @@ Target: `riskLabel`
 
 | Métrica | Valor |
 |---|---:|
-| accuracy | not_available |
-| recall | not_available |
-| f1 | not_available |
 | precision | not_available |
+| f1 | not_available |
+| recall | not_available |
+| accuracy | not_available |
 
 ## Observações
 
