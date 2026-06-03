@@ -64,39 +64,7 @@ public class ModelBuilderMain {
     }
 
     private static TrainingReport trainFraud() {
-        new FraudModelTrainer().train(FRAUD_INPUT, FRAUD_OUTPUT);
-
-        long totalRecords = countCsvRecords(FRAUD_INPUT);
-
-        return new TrainingReport(
-                "fraud-tribuo",
-                "fraud-tribuo-v1",
-                "FRAUD",
-                "Tribuo Classification",
-                "Tribuo",
-                FRAUD_INPUT.getFileName().toString(),
-                FRAUD_INPUT.toString(),
-                FRAUD_OUTPUT.toString(),
-                "ACTIVE",
-                Instant.now(),
-                0,
-                0,
-                totalRecords,
-                List.of(
-                        "totalAmount",
-                        "totalItems",
-                        "customerState",
-                        "estimatedDeliveryDays"
-                ),
-                "riskLabel",
-                Map.of(
-                        "accuracy", "not_available",
-                        "precision", "not_available",
-                        "recall", "not_available",
-                        "f1", "not_available"
-                ),
-                "Modelo de classificação de risco de fraude usando dataset sintético baseado em atributos do ecommerce e da base Olist. Métricas detalhadas serão extraídas em uma evolução do FraudModelTrainer."
-        );
+        return new FraudModelTrainer().train(FRAUD_INPUT, FRAUD_OUTPUT);
     }
 
     private static Path repoPath(String path) {
