@@ -10,7 +10,7 @@
 | Algoritmo | Tribuo CART Regression |
 | Framework | Tribuo |
 | Status | ACTIVE |
-| Treinado em | 2026-05-28T14:15:25.684674017Z |
+| Treinado em | 2026-06-03T12:39:19.000184947Z |
 | Dataset | olist_delivery_training_tribuo.csv |
 | Arquivo de entrada | `../delivery-estimator-api/src/main/resources/ml/olist_delivery_training_tribuo.csv` |
 | Modelo gerado | `../models/delivery/delivery-tribuo-v1.model` |
@@ -26,6 +26,26 @@
 ## Features
 
 - `items_quantity`
+- `log_items_quantity`
+- `same_state`
+- `same_region`
+- `is_interstate`
+- `route_distance_km`
+- `distance_local`
+- `distance_short`
+- `distance_medium`
+- `distance_long`
+- `distance_very_long`
+- `origin_region_NORTE`
+- `origin_region_NORDESTE`
+- `origin_region_CENTRO_OESTE`
+- `origin_region_SUDESTE`
+- `origin_region_SUL`
+- `destination_region_NORTE`
+- `destination_region_NORDESTE`
+- `destination_region_CENTRO_OESTE`
+- `destination_region_SUDESTE`
+- `destination_region_SUL`
 - `origin_AC`
 - `origin_AL`
 - `origin_AM`
@@ -87,9 +107,9 @@ Target: `delivery_days`
 
 | Métrica | Valor |
 |---|---:|
-| rmse | 7.84791215767874 |
-| mae | 5.413944182710921 |
-| r2 | 0.20659260127041568 |
+| rmse | 7.7333319066485116 |
+| mae | 5.313625128899415 |
+| r2 | 0.22959112074307886 |
 
 ## Observações
 
