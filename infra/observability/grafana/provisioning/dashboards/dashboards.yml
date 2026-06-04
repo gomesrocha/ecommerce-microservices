@@ -1,9 +1,9 @@
 apiVersion: 1
 
 providers:
-  - name: "Ecommerce Dashboards"
+  - name: ecommerce-dashboards
     orgId: 1
-    folder: "Ecommerce ML"
+    folder: Ecommerce Microservices
     type: file
     disableDeletion: false
     editable: true
