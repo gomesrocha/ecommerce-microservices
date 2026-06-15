@@ -13,6 +13,7 @@ import java.io.ObjectInputStream;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 @ApplicationScoped
@@ -20,7 +21,6 @@ public class FraudTribuoModelService {
 
     private static final Logger LOG = Logger.getLogger(FraudTribuoModelService.class);
 
-    private static final String MODEL_VERSION = "fraud-tribuo-v1";
     private static final String FRAUD_RISK = "FRAUD_RISK";
 
     private Model<Label> model;
@@ -30,6 +30,9 @@ public class FraudTribuoModelService {
 
     @ConfigProperty(name = "app.fraud-ml.model-path")
     String modelPath;
+
+    @ConfigProperty(name = "app.fraud-ml.model-version", defaultValue = "fraud-tribuo-v2")
+    String modelVersion;
 
     void onStart(@Observes StartupEvent event) {
         if (!enabled) {
@@ -58,8 +61,7 @@ public class FraudTribuoModelService {
             BigDecimal avgItemPrice,
             BigDecimal maxItemPrice,
             Integer uniqueProducts,
-            String originState,
-            String destinationState
+            LocalDateTime occurredAt
     ) {
         if (model == null) {
             return Optional.empty();
@@ -71,8 +73,7 @@ public class FraudTribuoModelService {
                 avgItemPrice,
                 maxItemPrice,
                 uniqueProducts,
-                originState,
-                destinationState
+                occurredAt
         );
 
         Prediction<Label> prediction = model.predict(example);
@@ -97,8 +98,27 @@ public class FraudTribuoModelService {
                 fraudRisk,
                 riskScore,
                 reason,
-                MODEL_VERSION
+                modelVersion
         ));
+    }
+
+    public Optional<FraudPredictionResult> predict(
+            BigDecimal totalAmount,
+            Integer itemsQuantity,
+            BigDecimal avgItemPrice,
+            BigDecimal maxItemPrice,
+            Integer uniqueProducts,
+            String originState,
+            String destinationState
+    ) {
+        return predict(
+                totalAmount,
+                itemsQuantity,
+                avgItemPrice,
+                maxItemPrice,
+                uniqueProducts,
+                LocalDateTime.now()
+        );
     }
 
     @SuppressWarnings("unchecked")
@@ -110,7 +130,11 @@ public class FraudTribuoModelService {
             return;
         }
 
-        LOG.infof("Carregando modelo Tribuo de fraude: %s", path.toAbsolutePath());
+        LOG.infof(
+                "Carregando modelo Tribuo de fraude: %s, modelVersion=%s",
+                path.toAbsolutePath(),
+                modelVersion
+        );
 
         try (ObjectInputStream inputStream = new ObjectInputStream(Files.newInputStream(path))) {
             Object object = inputStream.readObject();
@@ -122,7 +146,7 @@ public class FraudTribuoModelService {
             this.model = (Model<Label>) loadedModel;
         }
 
-        LOG.infof("Modelo Tribuo de fraude carregado com sucesso. modelVersion=%s", MODEL_VERSION);
+        LOG.infof("Modelo Tribuo de fraude carregado com sucesso. modelVersion=%s", modelVersion);
     }
 
     private double sanitizeScore(double value) {
