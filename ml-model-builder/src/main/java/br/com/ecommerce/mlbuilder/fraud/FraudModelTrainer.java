@@ -29,12 +29,30 @@ public class FraudModelTrainer {
     private static final String POSITIVE_LABEL = "FRAUD_RISK";
 
     public TrainingReport train(Path inputCsv, Path outputModel) {
+        return train(
+                inputCsv,
+                outputModel,
+                "fraud-tribuo",
+                "fraud-tribuo-v1",
+                "Modelo de classificação de risco de fraude usando dataset sintético baseado em atributos do ecommerce e da base Olist. As métricas usam FRAUD_RISK como classe positiva."
+        );
+    }
+
+    public TrainingReport train(
+            Path inputCsv,
+            Path outputModel,
+            String modelName,
+            String modelVersion,
+            String notes
+    ) {
         try {
             if (!Files.exists(inputCsv)) {
                 throw new IllegalArgumentException("CSV de treino de fraude não encontrado: " + inputCsv);
             }
 
             System.out.println("Treinando modelo de fraude...");
+            System.out.println("Modelo: " + modelName);
+            System.out.println("Versão: " + modelVersion);
             System.out.println("Input CSV: " + inputCsv.toAbsolutePath());
 
             LabelFactory factory = new LabelFactory();
@@ -59,7 +77,7 @@ public class FraudModelTrainer {
             var evaluation = evaluator.evaluate(model, testData);
 
             System.out.println("Fraud model metrics:");
-            System.out.println(evaluation.toString());
+            System.out.println(evaluation);
 
             ClassificationMetrics metrics = calculateMetrics(model, testData);
 
@@ -86,8 +104,8 @@ public class FraudModelTrainer {
             reportMetrics.put("tn", metrics.trueNegative());
 
             return new TrainingReport(
-                    "fraud-tribuo",
-                    "fraud-tribuo-v1",
+                    modelName,
+                    modelVersion,
                     "FRAUD",
                     "Tribuo CART Classification",
                     "Tribuo",
@@ -102,7 +120,7 @@ public class FraudModelTrainer {
                     readFeatureNames(inputCsv),
                     TARGET_COLUMN,
                     reportMetrics,
-                    "Modelo de classificação de risco de fraude usando dataset sintético baseado em atributos do ecommerce e da base Olist. As métricas usam FRAUD_RISK como classe positiva."
+                    notes
             );
 
         } catch (Exception exception) {

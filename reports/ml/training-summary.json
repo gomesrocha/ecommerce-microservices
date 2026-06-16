@@ -1,6 +1,29 @@
 {
-  "generatedAt": "2026-06-03T17:51:30.904867896Z",
+  "generatedAt": "2026-06-16T19:45:42.091807664Z",
   "models": [
+    {
+      "modelName": "delivery-tribuo",
+      "modelVersion": "delivery-tribuo-v1",
+      "domain": "DELIVERY",
+      "algorithm": "Tribuo CART Regression",
+      "framework": "Tribuo",
+      "datasetName": "olist_delivery_training_tribuo.csv",
+      "inputPath": "../delivery-estimator-api/src/main/resources/ml/olist_delivery_training_tribuo.csv",
+      "outputPath": "../models/delivery/delivery-tribuo-v1.model",
+      "status": "ACTIVE",
+      "trainedAt": "2026-06-16T19:45:35.816107685Z",
+      "trainSize": 77114,
+      "testSize": 19279,
+      "totalRecords": 96393,
+      "features": ["items_quantity", "log_items_quantity", "same_state", "same_region", "is_interstate", "route_distance_km", "distance_local", "distance_short", "distance_medium", "distance_long", "distance_very_long", "origin_region_NORTE", "origin_region_NORDESTE", "origin_region_CENTRO_OESTE", "origin_region_SUDESTE", "origin_region_SUL", "destination_region_NORTE", "destination_region_NORDESTE", "destination_region_CENTRO_OESTE", "destination_region_SUDESTE", "destination_region_SUL", "origin_AC", "origin_AL", "origin_AM", "origin_AP", "origin_BA", "origin_CE", "origin_DF", "origin_ES", "origin_GO", "origin_MA", "origin_MG", "origin_MS", "origin_MT", "origin_PA", "origin_PB", "origin_PE", "origin_PI", "origin_PR", "origin_RJ", "origin_RN", "origin_RO", "origin_RR", "origin_RS", "origin_SC", "origin_SE", "origin_SP", "origin_TO", "destination_AC", "destination_AL", "destination_AM", "destination_AP", "destination_BA", "destination_CE", "destination_DF", "destination_ES", "destination_GO", "destination_MA", "destination_MG", "destination_MS", "destination_MT", "destination_PA", "destination_PB", "destination_PE", "destination_PI", "destination_PR", "destination_RJ", "destination_RN", "destination_RO", "destination_RR", "destination_RS", "destination_SC", "destination_SE", "destination_SP", "destination_TO"],
+      "target": "delivery_days",
+      "metrics": {
+        "rmse": 7.7333319066485116,
+        "mae": 5.313625128899415,
+        "r2": 0.22959112074307886
+      },
+      "notes": "Modelo de regressão para estimativa de prazo de entrega usando dados derivados da base Olist."
+    },
     {
       "modelName": "fraud-tribuo",
       "modelVersion": "fraud-tribuo-v1",
@@ -11,7 +34,7 @@
       "inputPath": "../data/fraud/olist/processed/olist_fraud_risk_training_tribuo.csv",
       "outputPath": "../models/fraud/fraud-tribuo-v1.model",
       "status": "ACTIVE",
-      "trainedAt": "2026-06-03T17:51:30.902239776Z",
+      "trainedAt": "2026-06-16T19:45:39.778824409Z",
       "trainSize": 64000,
       "testSize": 16000,
       "totalRecords": 80000,
@@ -28,6 +51,34 @@
         "tn": 13926
       },
       "notes": "Modelo de classificação de risco de fraude usando dataset sintético baseado em atributos do ecommerce e da base Olist. As métricas usam FRAUD_RISK como classe positiva."
+    },
+    {
+      "modelName": "fraud-tribuo",
+      "modelVersion": "fraud-tribuo-v2",
+      "domain": "FRAUD",
+      "algorithm": "Tribuo CART Classification",
+      "framework": "Tribuo",
+      "datasetName": "kaggle_fraud_training_tribuo.csv",
+      "inputPath": "../data/fraud/kaggle/processed/kaggle_fraud_training_tribuo.csv",
+      "outputPath": "../models/fraud/fraud-tribuo-v2.model",
+      "status": "ACTIVE",
+      "trainedAt": "2026-06-16T19:45:42.090137674Z",
+      "trainSize": 38604,
+      "testSize": 9651,
+      "totalRecords": 48255,
+      "features": ["total_amount", "log_total_amount", "items_quantity", "log_items_quantity", "avg_item_price", "log_avg_item_price", "max_item_price", "log_max_item_price", "unique_products", "amount_per_item", "price_spread", "max_to_avg_price_ratio", "transaction_hour", "transaction_day_of_week", "transaction_is_weekend", "amount_low", "amount_medium", "amount_high", "amount_very_high", "items_single", "items_few", "items_many", "hour_night", "hour_morning", "hour_afternoon", "hour_evening"],
+      "target": "label",
+      "metrics": {
+        "accuracy": 0.950056988913066,
+        "precision": 0.8942708333333333,
+        "recall": 0.8602204408817635,
+        "f1": 0.8769152196118488,
+        "tp": 1717,
+        "fp": 203,
+        "fn": 279,
+        "tn": 7452
+      },
+      "notes": "Modelo de classificação de risco de fraude treinado com dataset público Kaggle Credit Card Transactions Fraud Detection, adaptado para um schema canônico compatível com OrderCreatedEvent. As métricas usam FRAUD_RISK como classe positiva."
     }
   ]
 }

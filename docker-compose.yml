@@ -163,7 +163,9 @@ services:
       RABBITMQ_VIRTUAL_HOST: /
 
       APP_FRAUD_ML_ENABLED: "true"
-      APP_FRAUD_ML_MODEL_PATH: "/models/fraud/fraud-tribuo-v1.model"
+      APP_FRAUD_ML_MODEL_PATH: "/models/fraud/fraud-tribuo-v2.model"
+      APP_FRAUD_ML_MODEL_VERSION: "fraud-tribuo-v2"
+    
     volumes:
     - ./models/fraud:/models/fraud:ro
     expose:
