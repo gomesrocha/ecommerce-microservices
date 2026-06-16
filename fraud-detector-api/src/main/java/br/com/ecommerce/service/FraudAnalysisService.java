@@ -84,8 +84,7 @@ public class FraudAnalysisService {
                     calculateAvgItemPrice(event),
                     calculateMaxItemPrice(event),
                     calculateUniqueProducts(event),
-                    findOriginState(event),
-                    event.payload().customerState()
+                    event.occurredAt()
             ).orElse(null);
 
             if (prediction != null) {

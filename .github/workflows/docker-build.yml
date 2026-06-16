@@ -1,0 +1,89 @@
+name: Docker Image Build Validation
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+  push:
+    branches:
+      - develop
+      - "feature/**"
+      - "chore/**"
+      - "fix/**"
+      - "docs/**"
+      - "ci/**"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  docker-build:
+    name: Build Docker image - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: user-api
+            context: user-api
+            dockerfile: Dockerfile
+
+          - service: product-api
+            context: product-api
+            dockerfile: Dockerfile
+
+          - service: order-api
+            context: order-api
+            dockerfile: Dockerfile
+
+          - service: delivery-estimator-api
+            context: delivery-estimator-api
+            dockerfile: Dockerfile
+
+          - service: fraud-detector-api
+            context: fraud-detector-api
+            dockerfile: Dockerfile
+
+          - service: payment-service
+            context: payment-service
+            dockerfile: src/main/docker/Dockerfile.jvm
+
+          - service: notification-service
+            context: notification-service
+            dockerfile: src/main/docker/Dockerfile.jvm
+
+          - service: ai-chat-bff
+            context: ai-chat-bff
+            dockerfile: src/main/docker/Dockerfile.jvm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Package service before Docker build
+        working-directory: ${{ matrix.context }}
+        run: |
+          if [ -f "./mvnw" ]; then
+            chmod +x ./mvnw
+            ./mvnw -B clean package -DskipTests
+          else
+            mvn -B clean package -DskipTests
+          fi
+
+      - name: Build Docker image
+        run: |
+          docker build \
+            --file "${{ matrix.context }}/${{ matrix.dockerfile }}" \
+            --tag "ecommerce-ms-${{ matrix.service }}:ci" \
+            "${{ matrix.context }}"
