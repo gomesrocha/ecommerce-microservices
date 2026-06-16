@@ -1,0 +1,78 @@
+name: Monorepo Build Validation
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+  push:
+    branches:
+      - develop
+      - "feature/**"
+      - "chore/**"
+      - "fix/**"
+      - "docs/**"
+      - "ci/**"
+
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-config:
+    name: Validate configuration
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose
+        run: docker compose config
+
+      - name: Validate KrakenD configuration
+        run: |
+          docker run --rm \
+            -v "$PWD/gateway:/etc/krakend" \
+            krakend:2.13 \
+            check -c /etc/krakend/krakend.json
+
+  build-java-services:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - user-api
+          - product-api
+          - order-api
+          - delivery-estimator-api
+          - fraud-detector-api
+          - payment-service
+          - notification-service
+          - ai-chat-bff
+          - ml-model-builder
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+
+      - name: Build service
+        working-directory: ${{ matrix.service }}
+        run: |
+          if [ -f "./mvnw" ]; then
+            chmod +x ./mvnw
+            ./mvnw -B clean package -DskipTests
+          else
+            mvn -B clean package -DskipTests
+          fi
